@@ -22,10 +22,32 @@ SHEET_ID = "1kIi3UL-fKzcrlpHraEMN_0aoMLVRt3Ss4a-bJvFmVTM"
 GID = "1834889034"
 DATA_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
 
-@st.cache_data(ttl=60) 
+@st.cache_data(ttl=15) 
 def load_data():
     df = pd.read_csv(DATA_URL)
+    
+    # Smart Column Cleaner: Strips spaces, forces clean titles
     df.columns = df.columns.str.strip()
+    
+    # Safety Check: If a column has minor typos, map it correctly
+    mapping = {}
+    for col in df.columns:
+        if col.lower() == 'performance': mapping[col] = 'Performance'
+        if col.lower() == 'city': mapping[col] = 'City'
+        if col.lower() == 'module': mapping[col] = 'Module'
+        if col.lower() == 'name': mapping[col] = 'Name'
+        if col.lower() == 'rider id': mapping[col] = 'Rider ID'
+    df = df.rename(columns=mapping)
+    
+    # Fill structural missing strings so the filters don't crash
+    fallback_cols = ["Performance", "City", "Module", "Name", "Rider ID"]
+    for c in fallback_cols:
+        if c in df.columns:
+            df[c] = df[c].astype(str).str.strip()
+        else:
+            # Create a blank column if the header is entirely missing from the sheet
+            df[c] = "N/A"
+            
     return df
 
 try:
@@ -49,7 +71,7 @@ st.write("### 📍 Operational Controls")
 deck_col1, deck_col2, deck_col3 = st.columns(3)
 
 with deck_col1:
-    unique_cities = ["All"] + list(df_raw["City"].dropna().unique())
+    unique_cities = ["All"] + [c for c in list(df_raw["City"].unique()) if c != "N/A"]
     selected_city = st.radio(
         label="Select Location Focus",
         options=unique_cities,
@@ -59,7 +81,7 @@ with deck_col1:
     )
 
 with deck_col2:
-    unique_modules = ["All"] + list(df_raw["Module"].dropna().unique())
+    unique_modules = ["All"] + [m for m in list(df_raw["Module"].unique()) if m != "N/A"]
     selected_module = st.radio(
         label="Select Core Training Segment",
         options=unique_modules,
@@ -84,7 +106,7 @@ if selected_city != "All":
 if selected_module != "All":
     df_filtered = df_filtered[df_filtered["Module"] == selected_module]
 if selected_perf != "All":
-    df_filtered = df_filtered[df_filtered["Performance"].str.strip() == selected_perf]
+    df_filtered = df_filtered[df_filtered["Performance"] == selected_perf]
 
 search_query = st.text_input("🔍 Quick Search Filter (Type Rider Name or unique ID Number)", placeholder="Start typing...")
 if search_query:
@@ -97,7 +119,7 @@ st.write("### ⚡ Macro Visual Metrics")
 kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
 
 total_riders = len(df_filtered)
-improved_riders = len(df_filtered[df_filtered["Performance"].str.strip().str.lower() == "improved"])
+improved_riders = len(df_filtered[df_filtered["Performance"].str.lower() == "improved"])
 success_rate = round((improved_riders / total_riders) * 100) if total_riders > 0 else 0
 
 with kpi_col1:
@@ -110,7 +132,7 @@ with kpi_col3:
 chart_col1, chart_col2 = st.columns(2)
 
 with chart_col1:
-    if not df_filtered.empty:
+    if not df_filtered.empty and df_filtered["Module"].iloc[0] != "N/A":
         chart_data = df_filtered.groupby(["Module", "Performance"]).size().reset_index(name="Riders")
         fig1 = px.bar(
             chart_data, 
@@ -124,10 +146,10 @@ with chart_col1:
         fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig1, use_container_width=True)
     else:
-        st.info("No chart data available for selection criteria.")
+        st.info("Waiting for valid matching sheet criteria to generate module trends.")
 
 with chart_col2:
-    if not df_filtered.empty:
+    if not df_filtered.empty and df_filtered["Performance"].iloc[0] != "N/A":
         fig2 = px.pie(
             df_filtered, 
             names="Performance", 
@@ -138,14 +160,13 @@ with chart_col2:
         )
         fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig2, use_container_width=True)
+    else:
+        st.info("Waiting for valid matching sheet criteria to generate conversion mix.")
 
 st.write("### 📋 Deep-Dive Rider Records Audit Table")
-st.dataframe(
-    df_filtered[[
-        "Rider ID", "Name", "Contract Name", "City", 
-        "Module", "Actual Planned Date", "Status", 
-        "Performance", "Pre-Training metric", "Post-Training Metric", "Feedback"
-    ]], 
-    use_container_width=True, 
-    hide_index=True
-)
+available_cols = [c for c in df_filtered.columns if c in [
+    "Rider ID", "Name", "Contract Name", "City", 
+    "Module", "Actual Planned Date", "Status", 
+    "Performance", "Pre-Training metric", "Post-Training Metric", "Feedback"
+]]
+st.dataframe(df_filtered[available_cols], use_container_width=True, hide_index=True)
