@@ -18,7 +18,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-SHEET_ID = "1kIi3UL-fKzcrlpHraEMN_0aoMLVRt3Ss4a-bJvFmVTM"
+# UPDATED DATA CONNECTION ENGINE (Connecting to your new sheet link)
+SHEET_ID = "1GTaLI9nBSMxgnZWCuarNL_GzPduhR6V-YXSXd7Tx_7U"
 GID = "1834889034"
 DATA_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
 
