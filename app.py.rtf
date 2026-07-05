@@ -2,28 +2,24 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 1. Page Configuration for an Elite Wide Layout
 st.set_page_config(
     page_title="Talabat UAE Rider Training Hub",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom Talabat Brand Injector (Orange Highlights)
 st.markdown("""
     <style>
         .stMainBlock { background-color: #0f172a; }
         h1 { color: #ff5000 !important; font-weight: 900 !important; }
         .stMetric { background-color: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         div[data-testid="stMetricValue"] { color: #ffffff !important; font-family: monospace; font-size: 2.5rem !important; }
-        /* Style radio buttons horizontally to resemble custom clickable tags */
         div[data-row="true"] { gap: 10px !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Data Connection Engine (Pulls directly from your exact URL sheet tab)
 SHEET_ID = "1kIi3UL-fKzcrlpHraEMN_0aoMLVRt3Ss4a-bJvFmVTM"
-GID = "1834889034"  # Target Tab: Existing Riders Training
+GID = "1834889034"
 DATA_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
 
 @st.cache_data(ttl=60) 
@@ -35,10 +31,9 @@ def load_data():
 try:
     df_raw = load_data()
 except Exception as e:
-    st.error(f"Pipeline Interrupted. Double check link sharing rules on your Sheet. Error: {e}")
+    st.error(f"Pipeline Interrupted. Error: {e}")
     st.stop()
 
-# Header Element
 col_logo, col_title, col_sync = st.columns([1, 4, 1.5])
 with col_title:
     st.title("🍊 talabat Operations Hub")
@@ -50,13 +45,11 @@ with col_sync:
 
 st.write("---")
 
-# 3. HORIZONTAL CONTROL DECK (Pills & Buttons - No Dropdowns!)
 st.write("### 📍 Operational Controls")
 deck_col1, deck_col2, deck_col3 = st.columns(3)
 
 with deck_col1:
     unique_cities = ["All"] + list(df_raw["City"].dropna().unique())
-    # Fallback to horizontal radio blocks supported across all versions
     selected_city = st.radio(
         label="Select Location Focus",
         options=unique_cities,
@@ -84,7 +77,6 @@ with deck_col3:
         key="perf_filter"
     )
 
-# 4. Filter Processing Logic
 df_filtered = df_raw.copy()
 
 if selected_city != "All":
@@ -94,7 +86,6 @@ if selected_module != "All":
 if selected_perf != "All":
     df_filtered = df_filtered[df_filtered["Performance"].str.strip() == selected_perf]
 
-# Search functionality
 search_query = st.text_input("🔍 Quick Search Filter (Type Rider Name or unique ID Number)", placeholder="Start typing...")
 if search_query:
     df_filtered = df_filtered[
@@ -102,7 +93,6 @@ if search_query:
         df_filtered["Rider ID"].astype(str).str.contains(search_query, case=False)
     ]
 
-# 5. HORIZONTAL METRIC CARDS
 st.write("### ⚡ Macro Visual Metrics")
 kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
 
@@ -117,7 +107,6 @@ with kpi_col2:
 with kpi_col3:
     st.metric(label="Cohort Conversion Rate", value=f"{success_rate}%")
 
-# 6. HORIZONTAL CHART VISUALIZATIONS
 chart_col1, chart_col2 = st.columns(2)
 
 with chart_col1:
@@ -150,7 +139,6 @@ with chart_col2:
         fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig2, use_container_width=True)
 
-# 7. INTERACTIVE LEDGER TABLE
 st.write("### 📋 Deep-Dive Rider Records Audit Table")
 st.dataframe(
     df_filtered[[
