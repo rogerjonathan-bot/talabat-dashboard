@@ -1,175 +1,163 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2870
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+import streamlit as st
+import pandas as pd
+import plotly.express as px
 
-\f0\fs24 \cf0 import streamlit as st\
-import pandas as pd\
-import plotly.express as px\
-\
-# 1. Page Configuration for an Elite Wide Layout\
-st.set_page_config(\
-    page_title="Talabat UAE Rider Training Hub",\
-    layout="wide",\
-    initial_sidebar_state="collapsed"\
-)\
-\
-# Custom Talabat Brand Injector (Orange Highlights)\
-st.markdown("""\
-    <style>\
-        .stMainBlock \{ background-color: #0f172a; \}\
-        h1 \{ color: #ff5000 !important; font-weight: 900 !important; \}\
-        .stMetric \{ background-color: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); \}\
-        div[data-testid="stMetricValue"] \{ color: #ffffff !important; font-family: monospace; font-size: 2.5rem !important; \}\
-    </style>\
-""", unsafe_allow_html=True)\
-\
-# 2. Data Connection Engine (Pulls directly from your exact URL sheet tab)\
-SHEET_ID = "1kIi3UL-fKzcrlpHraEMN_0aoMLVRt3Ss4a-bJvFmVTM"\
-GID = "1834889034"  # Target Tab: Existing Riders Training\
-DATA_URL = f"https://docs.google.com/spreadsheets/d/\{SHEET_ID\}/export?format=csv&gid=\{GID\}"\
-\
-@st.cache_data(ttl=60)  # Caches data for 60 seconds, then fetches updates\
-def load_data():\
-    df = pd.read_csv(DATA_URL)\
-    # Strip any trailing whitespaces from the header text strings automatically\
-    df.columns = df.columns.str.strip()\
-    return df\
-\
-try:\
-    df_raw = load_data()\
-except Exception as e:\
-    st.error(f"Pipeline Interrupted. Double check link sharing rules on your Sheet. Error: \{e\}")\
-    st.stop()\
-\
-# Header Element\
-col_logo, col_title, col_sync = st.columns([1, 4, 1.5])\
-with col_title:\
-    st.title("\uc0\u55356 \u57162  talabat Operations Hub")\
-    st.caption("Real-Time Data Syncing Active via talabat.com corporate workspace network")\
-with col_sync:\
-    if st.button("\uc0\u55357 \u56580  Force Refresh Master Sheet", use_container_width=True):\
-        st.cache_data.clear()\
-        st.rerun()\
-\
-st.write("---")\
-\
-# 3. HORIZONTAL CONTROL DECK (Pills & Buttons - No Dropdowns!)\
-st.write("### \uc0\u55357 \u56525  Operational Controls")\
-deck_col1, deck_col2, deck_col3 = st.columns(3)\
-\
-with deck_col1:\
-    # Dynamically extract whatever cities exist in column C\
-    unique_cities = ["All"] + list(df_raw["City"].dropna().unique())\
-    selected_city = st.segmented_control(\
-        label="Select Location Focus",\
-        options=unique_cities,\
-        default="All",\
-        key="city_filter"\
-    )\
-\
-with deck_col2:\
-    # Dynamically extract modules from column D\
-    unique_modules = ["All"] + list(df_raw["Module"].dropna().unique())\
-    selected_module = st.segmented_control(\
-        label="Select Core Training Segment",\
-        options=unique_modules,\
-        default="All",\
-        key="module_filter"\
-    )\
-\
-with deck_col3:\
-    selected_perf = st.segmented_control(\
-        label="Performance Filter Output",\
-        options=["All", "Improved", "Not Improved"],\
-        default="All",\
-        key="perf_filter"\
-    )\
-\
-# 4. Filter Processing Logic\
-df_filtered = df_raw.copy()\
-\
-if selected_city and selected_city != "All":\
-    df_filtered = df_filtered[df_filtered["City"] == selected_city]\
-if selected_module and selected_module != "All":\
-    df_filtered = df_filtered[df_filtered["Module"] == selected_module]\
-if selected_perf and selected_perf != "All":\
-    df_filtered = df_filtered[df_filtered["Performance"].astype(str).str.strip() == selected_perf]\
-\
-# Search functionality\
-search_query = st.text_input("\uc0\u55357 \u56589  Quick Search Filter (Type Rider Name or unique ID Number)", placeholder="Start typing...")\
-if search_query:\
-    df_filtered = df_filtered[\
-        df_filtered["Name"].astype(str).str.contains(search_query, case=False, na=False) |\
-        df_filtered["Rider ID"].astype(str).str.contains(search_query, case=False, na=False)\
-    ]\
-\
-# 5. HORIZONTAL METRIC CARDS\
-st.write("### \uc0\u9889  Macro Visual Metrics")\
-kpi_col1, kpi_col2, kpi_col3 = st.columns(3)\
-\
-total_riders = len(df_filtered)\
-improved_riders = len(df_filtered[df_filtered["Performance"].astype(str).str.strip().str.lower() == "improved"])\
-success_rate = round((improved_riders / total_riders) * 100) if total_riders > 0 else 0\
-\
-with kpi_col1:\
-    st.metric(label="Riders Logged Pool", value=f"\{total_riders:,\}")\
-with kpi_col2:\
-    st.metric(label="Validated Growth Cohort", value=f"\{improved_riders:,\}")\
-with kpi_col3:\
-    st.metric(label="Cohort Conversion Rate", value=f"\{success_rate\}%")\
-\
-# 6. HORIZONTAL CHART VISUALIZATIONS\
-chart_col1, chart_col2 = st.columns(2)\
-\
-with chart_col1:\
-    if not df_filtered.empty:\
-        # Dynamic Grouping Chart\
-        chart_data = df_filtered.groupby(["Module", "Performance"]).size().reset_index(name="Riders")\
-        fig1 = px.bar(\
-            chart_data,\
-            x="Module",\
-            y="Riders",\
-            color="Performance",\
-            title="Volume Density By Training Module",\
-            barmode="stack",\
-            color_discrete_map=\{"Improved": "#10b981", "Not Improved": "#ef4444"\}\
-        )\
-        fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')\
-        st.plotly_chart(fig1, use_container_width=True)\
-    else:\
-        st.info("No chart data available for selection criteria.")\
-\
-with chart_col2:\
-    if not df_filtered.empty:\
-        fig2 = px.pie(\
-            df_filtered,\
-            names="Performance",\
-            title="Macro Operational Success Mix",\
-            hole=0.4,\
-            color="Performance",\
-            color_discrete_map=\{"Improved": "#10b981", "Not Improved": "#ef4444"\}\
-        )\
-        fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')\
-        st.plotly_chart(fig2, use_container_width=True)\
-    else:\
-        st.info("No chart data available for selection criteria.")\
-\
-# 7. INTERACTIVE LEDGER TABLE\
-st.write("### \uc0\u55357 \u56523  Deep-Dive Rider Records Audit Table")\
-\
-# Only show columns that actually exist in the sheet (guards against header mismatches)\
-desired_cols = [\
-    "Rider ID", "Name", "Contract Name", "City",\
-    "Module", "Actual Planned Date", "Status",\
-    "Performance", "Pre-Training metric", "Post-Training Metric", "Feedback"\
-]\
-display_cols = [c for c in desired_cols if c in df_filtered.columns]\
-\
-st.dataframe(\
-    df_filtered[display_cols],\
-    use_container_width=True,\
-    hide_index=True\
-)}
+# 1. Page Configuration for an Elite Wide Layout
+st.set_page_config(
+    page_title="Talabat UAE Rider Training Hub",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# Custom Talabat Brand Injector (Orange Highlights)
+st.markdown("""
+    <style>
+        .stMainBlock { background-color: #0f172a; }
+        h1 { color: #ff5000 !important; font-weight: 900 !important; }
+        .stMetric { background-color: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        div[data-testid="stMetricValue"] { color: #ffffff !important; font-family: monospace; font-size: 2.5rem !important; }
+        /* Style radio buttons horizontally to resemble custom clickable tags */
+        div[data-row="true"] { gap: 10px !important; }
+    </style>
+""", unsafe_allow_html=True)
+
+# 2. Data Connection Engine (Pulls directly from your exact URL sheet tab)
+SHEET_ID = "1kIi3UL-fKzcrlpHraEMN_0aoMLVRt3Ss4a-bJvFmVTM"
+GID = "1834889034"  # Target Tab: Existing Riders Training
+DATA_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
+
+@st.cache_data(ttl=60) 
+def load_data():
+    df = pd.read_csv(DATA_URL)
+    df.columns = df.columns.str.strip()
+    return df
+
+try:
+    df_raw = load_data()
+except Exception as e:
+    st.error(f"Pipeline Interrupted. Double check link sharing rules on your Sheet. Error: {e}")
+    st.stop()
+
+# Header Element
+col_logo, col_title, col_sync = st.columns([1, 4, 1.5])
+with col_title:
+    st.title("🍊 talabat Operations Hub")
+    st.caption("Real-Time Data Syncing Active via talabat.com corporate workspace network")
+with col_sync:
+    if st.button("🔄 Force Refresh Master Sheet", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+
+st.write("---")
+
+# 3. HORIZONTAL CONTROL DECK (Pills & Buttons - No Dropdowns!)
+st.write("### 📍 Operational Controls")
+deck_col1, deck_col2, deck_col3 = st.columns(3)
+
+with deck_col1:
+    unique_cities = ["All"] + list(df_raw["City"].dropna().unique())
+    # Fallback to horizontal radio blocks supported across all versions
+    selected_city = st.radio(
+        label="Select Location Focus",
+        options=unique_cities,
+        index=0,
+        horizontal=True,
+        key="city_filter"
+    )
+
+with deck_col2:
+    unique_modules = ["All"] + list(df_raw["Module"].dropna().unique())
+    selected_module = st.radio(
+        label="Select Core Training Segment",
+        options=unique_modules,
+        index=0,
+        horizontal=True,
+        key="module_filter"
+    )
+
+with deck_col3:
+    selected_perf = st.radio(
+        label="Performance Filter Output",
+        options=["All", "Improved", "Not Improved"],
+        index=0,
+        horizontal=True,
+        key="perf_filter"
+    )
+
+# 4. Filter Processing Logic
+df_filtered = df_raw.copy()
+
+if selected_city != "All":
+    df_filtered = df_filtered[df_filtered["City"] == selected_city]
+if selected_module != "All":
+    df_filtered = df_filtered[df_filtered["Module"] == selected_module]
+if selected_perf != "All":
+    df_filtered = df_filtered[df_filtered["Performance"].str.strip() == selected_perf]
+
+# Search functionality
+search_query = st.text_input("🔍 Quick Search Filter (Type Rider Name or unique ID Number)", placeholder="Start typing...")
+if search_query:
+    df_filtered = df_filtered[
+        df_filtered["Name"].astype(str).str.contains(search_query, case=False) |
+        df_filtered["Rider ID"].astype(str).str.contains(search_query, case=False)
+    ]
+
+# 5. HORIZONTAL METRIC CARDS
+st.write("### ⚡ Macro Visual Metrics")
+kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
+
+total_riders = len(df_filtered)
+improved_riders = len(df_filtered[df_filtered["Performance"].str.strip().str.lower() == "improved"])
+success_rate = round((improved_riders / total_riders) * 100) if total_riders > 0 else 0
+
+with kpi_col1:
+    st.metric(label="Riders Logged Pool", value=f"{total_riders:,}")
+with kpi_col2:
+    st.metric(label="Validated Growth Cohort", value=f"{improved_riders:,}")
+with kpi_col3:
+    st.metric(label="Cohort Conversion Rate", value=f"{success_rate}%")
+
+# 6. HORIZONTAL CHART VISUALIZATIONS
+chart_col1, chart_col2 = st.columns(2)
+
+with chart_col1:
+    if not df_filtered.empty:
+        chart_data = df_filtered.groupby(["Module", "Performance"]).size().reset_index(name="Riders")
+        fig1 = px.bar(
+            chart_data, 
+            x="Module", 
+            y="Riders", 
+            color="Performance",
+            title="Volume Density By Training Module",
+            barmode="stack",
+            color_discrete_map={"Improved": "#10b981", "Not Improved": "#ef4444"}
+        )
+        fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig1, use_container_width=True)
+    else:
+        st.info("No chart data available for selection criteria.")
+
+with chart_col2:
+    if not df_filtered.empty:
+        fig2 = px.pie(
+            df_filtered, 
+            names="Performance", 
+            title="Macro Operational Success Mix",
+            hole=0.4,
+            color="Performance",
+            color_discrete_map={"Improved": "#10b981", "Not Improved": "#ef4444"}
+        )
+        fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig2, use_container_width=True)
+
+# 7. INTERACTIVE LEDGER TABLE
+st.write("### 📋 Deep-Dive Rider Records Audit Table")
+st.dataframe(
+    df_filtered[[
+        "Rider ID", "Name", "Contract Name", "City", 
+        "Module", "Actual Planned Date", "Status", 
+        "Performance", "Pre-Training metric", "Post-Training Metric", "Feedback"
+    ]], 
+    use_container_width=True, 
+    hide_index=True
+)
