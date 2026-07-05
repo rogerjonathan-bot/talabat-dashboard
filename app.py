@@ -2,147 +2,165 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+# 1. Premium wide page layout engine
 st.set_page_config(
-    page_title="Talabat UAE Rider Training Hub",
+    page_title="talabat UAE Logistics Deck",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
+# Custom talabat Brand Styling Blocks (Orange Accent Palette)
 st.markdown("""
     <style>
         .stMainBlock { background-color: #0f172a; }
-        h1 { color: #ff5000 !important; font-weight: 900 !important; }
-        .stMetric { background-color: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        div[data-testid="stMetricValue"] { color: #ffffff !important; font-family: monospace; font-size: 2.5rem !important; }
-        div[data-row="true"] { gap: 10px !important; }
+        h1 { color: #ff5000 !important; font-weight: 900 !important; letter-spacing: -1px; }
+        h3 { color: #f8fafc !important; font-weight: 700 !important; }
+        .stMetric { background-color: #1e293b; border: 1px solid #334155; padding: 22px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        div[data-testid="stMetricValue"] { color: #ffffff !important; font-family: monospace; font-size: 2.6rem !important; font-weight: 700; }
+        div[data-row="true"] { gap: 12px !important; }
+        /* Style radio buttons cleanly to mimic horizontal panel sliders */
+        div[data-testid="stWidgetLabel"] p { color: #94a3b8 !important; font-weight: 600 !important; }
     </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=60) 
-def load_data():
-    # Direct local file pull from your GitHub repository folder!
+# 2. Resilient Internal Data Extraction Pipeline
+@st.cache_data(ttl=10)
+def load_native_data():
     df = pd.read_csv("data.csv")
+    # Force clean structural text processing across all column tags
     df.columns = df.columns.str.strip()
     
-    mapping = {}
+    # Intelligently adapt column schemas for variations between data sheets
+    standard_map = {}
     for col in df.columns:
-        if col.lower() == 'performance': mapping[col] = 'Performance'
-        if col.lower() == 'city': mapping[col] = 'City'
-        if col.lower() == 'module': mapping[col] = 'Module'
-        if col.lower() == 'name': mapping[col] = 'Name'
-        if col.lower() == 'rider id': mapping[col] = 'Rider ID'
-        if col.lower() == 'status': mapping[col] = 'Status'
-    df = df.rename(columns=mapping)
+        c_low = col.lower()
+        if 'rider id' in c_low: standard_map[col] = 'Rider ID'
+        elif 'name' in c_low: standard_map[col] = 'Name'
+        elif 'contract' in c_low: standard_map[col] = 'Contract Name'
+        elif 'city' in c_low: standard_map[col] = 'City'
+        elif 'module' in c_low: standard_map[col] = 'Module'
+        elif 'status' in c_low: standard_map[col] = 'Status'
+        elif 'performance' in c_low: standard_map[col] = 'Performance'
+        elif 'pre-training' in c_low: standard_map[col] = 'Pre-Training Metric'
+        elif 'post-training' in c_low: standard_map[col] = 'Post-Training Metric'
+        elif 'feedback' in c_low: standard_map[col] = 'Feedback'
+        elif 'date' in c_low: standard_map[col] = 'Planned Date'
     
-    fallback_cols = ["Performance", "City", "Module", "Name", "Rider ID", "Status"]
-    for c in fallback_cols:
-        if c in df.columns:
-            df[c] = df[c].astype(str).str.strip()
+    df = df.rename(columns=standard_map)
+    
+    # Fill in structural column placeholders dynamically if missing from snapshot fields
+    core_architecture = ['Rider ID', 'Name', 'Contract Name', 'City', 'Module', 'Planned Date', 'Status', 'Performance', 'Pre-Training Metric', 'Post-Training Metric', 'Feedback']
+    for element in core_architecture:
+        if element in df.columns:
+            df[element] = df[element].astype(str).str.strip()
         else:
-            df[c] = "N/A"
+            df[element] = "Not Documented"
             
     return df
 
 try:
-    df_raw = load_data()
-except Exception as e:
-    st.error(f"Local Data Read Error: {e}")
+    df_raw = load_native_data()
+except Exception as error_logs:
+    st.error(st.error(f"Local Ledger Pipeline Disrupted. Diagnostics: {error_logs}"))
     st.stop()
 
-col_logo, col_title, col_sync = st.columns([1, 4, 1.5])
+# Dashboard Interactive Controls Banner Panel Setup
+col_branding, col_title, col_reset = st.columns([0.8, 4, 1.5])
 with col_title:
     st.title("🍊 talabat Operations Hub")
-    st.caption("Secure Native Local Ledger Mode Active")
-with col_sync:
-    if st.button("🔄 Force Clear App Cache", use_container_width=True):
+    st.caption("Secure Local Data Repository Execution Active • UAE Fleet Framework")
+with col_reset:
+    if st.button("🔄 Purge System Cache", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
 st.write("---")
 
-st.write("### 📍 Operational Controls")
-deck_col1, deck_col2, deck_col3 = st.columns(3)
+# 3. COMPACT HORIZONTAL CONTROL DECKS (Radio Matrix Strips)
+st.write("### 📍 Fleet Control Parameters")
+control_col1, control_col2, control_col3 = st.columns(3)
 
-with deck_col1:
-    unique_cities = ["All"] + [c for c in list(df_raw["City"].unique()) if c != "N/A" and c != "nan"]
-    selected_city = st.radio(label="Select Location Focus", options=unique_cities, index=0, horizontal=True, key="city_filter")
+with control_col1:
+    valid_cities = ["All Focus Areas"] + sorted([c for c in df_raw["City"].unique() if c not in ["N/A", "nan", "Not Documented"]])
+    selected_city = st.radio("Regional Hub Location Focus", options=valid_cities, index=0, horizontal=True)
 
-with deck_col2:
-    unique_modules = ["All"] + [m for m in list(df_raw["Module"].unique()) if m != "N/A" and m != "nan"]
-    selected_module = st.radio(label="Select Core Training Segment", options=unique_modules, index=0, horizontal=True, key="module_filter")
+with control_col2:
+    valid_modules = ["All Operational Segments"] + sorted([m for m in df_raw["Module"].unique() if m not in ["N/A", "nan", "Not Documented"]])
+    selected_module = st.radio("Core Optimization Module Focus", options=valid_modules, index=0, horizontal=True)
 
-with deck_col3:
-    unique_status = ["All"] + [s for s in list(df_raw["Status"].unique()) if s != "N/A" and s != "nan"]
-    selected_status = st.radio(label="Training Attendance Output", options=unique_status, index=0, horizontal=True, key="status_filter")
+with control_col3:
+    valid_status = ["All Status Outputs"] + sorted([s for s in df_raw["Status"].unique() if s not in ["N/A", "nan", "Not Documented"]])
+    selected_status = st.radio("Training Attendance Logs Filter", options=valid_status, index=0, horizontal=True)
 
+# 4. Fleet Data Matrix Filtration Engine
 df_filtered = df_raw.copy()
 
-if selected_city != "All":
+if selected_city != "All Focus Areas":
     df_filtered = df_filtered[df_filtered["City"] == selected_city]
-if selected_module != "All":
+if selected_module != "All Operational Segments":
     df_filtered = df_filtered[df_filtered["Module"] == selected_module]
-if selected_status != "All":
+if selected_status != "All Status Outputs":
     df_filtered = df_filtered[df_filtered["Status"] == selected_status]
 
-search_query = st.text_input("🔍 Quick Search Filter (Type Rider Name or unique ID Number)", placeholder="Start typing...")
+# Global Query Search Indexer Bar (Instant search via Rider Name or Unique Identity Code)
+search_query = st.text_input("🔍 Quick Global Audit Registry Index Search (Type Rider Name, Company, or ID Number)", placeholder="Awaiting search criteria input string...")
 if search_query:
     df_filtered = df_filtered[
-        df_filtered["Name"].astype(str).str.contains(search_query, case=False) |
-        df_filtered["Rider ID"].astype(str).str.contains(search_query, case=False)
+        df_filtered["Name"].str.contains(search_query, case=False) |
+        df_filtered["Rider ID"].str.contains(search_query, case=False) |
+        df_filtered["Contract Name"].str.contains(search_query, case=False)
     ]
 
-st.write("### ⚡ Macro Visual Metrics")
-kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
+# 5. INDUSTRIAL PERFORMANCE KPIS
+st.write("### ⚡ Macro Visual Operations Metrics")
+metric_col1, metric_col2, metric_col3 = st.columns(3)
 
-total_riders = len(df_filtered)
-attended_riders = len(df_filtered[df_filtered["Status"].str.lower() == "attended"])
-attendance_rate = round((attended_riders / total_riders) * 100) if total_riders > 0 else 0
+total_logged_pool = len(df_filtered)
+validated_attendance_cohort = len(df_filtered[df_filtered["Status"].str.lower() == "attended"])
+engagement_conversion_ratio = round((validated_attendance_cohort / total_logged_pool) * 100) if total_logged_pool > 0 else 0
 
-with kpi_col1:
-    st.metric(label="Riders Logged Pool", value=f"{total_riders:,}")
-with kpi_col2:
-    st.metric(label="Validated Attendance Cohort", value=f"{attended_riders:,}")
-with kpi_col3:
-    st.metric(label="Cohort Engagement Rate", value=f"{attendance_rate}%")
+with metric_col1:
+    st.metric(label="Riders Accounted Pool", value=f"{total_logged_pool:,}")
+with metric_col2:
+    st.metric(label="Validated Attendance Registry", value=f"{validated_attendance_cohort:,}")
+with metric_col3:
+    st.metric(label="Operational Engagement Rate", value=f"{engagement_conversion_ratio}%")
 
+# 6. CHART GEOMETRY DESIGNS (Horizontal Axis Distribution Matrix)
 chart_col1, chart_col2 = st.columns(2)
 
 with chart_col1:
-    if not df_filtered.empty and df_filtered["Module"].iloc[0] != "N/A":
-        chart_data = df_filtered.groupby(["Module", "Status"]).size().reset_index(name="Riders")
+    if not df_filtered.empty:
+        distribution_chart_df = df_filtered.groupby(["Module", "Status"]).size().reset_index(name="Riders Count")
         fig1 = px.bar(
-            chart_data, 
-            x="Module", 
-            y="Riders", 
+            distribution_chart_df,
+            x="Module",
+            y="Riders Count",
             color="Status",
-            title="Volume Density By Training Module",
+            title="Volume Density Classification Mix",
             barmode="stack",
-            color_discrete_map={"Attended": "#10b981", "Not Attended": "#ef4444"}
+            color_discrete_map={"Attended": "#10b981", "Not Attended": "#ef4444", "Not Documented": "#64748b"}
         )
-        fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#f8fafc"))
         st.plotly_chart(fig1, use_container_width=True)
     else:
-        st.info("Waiting for valid data attributes.")
+        st.info("Awaiting structural filters calculation values.")
 
 with chart_col2:
-    if not df_filtered.empty and df_filtered["Status"].iloc[0] != "N/A":
+    if not df_filtered.empty:
         fig2 = px.pie(
-            df_filtered, 
-            names="Status", 
-            title="Macro Operational Attendance Mix",
+            df_filtered,
+            names="City",
+            title="Geographic Hub Distribution Densities Matrix",
             hole=0.4,
-            color="Status",
-            color_discrete_map={"Attended": "#10b981", "Not Attended": "#ef4444"}
+            color_discrete_sequence=px.colors.sequential.Oranges_r
         )
-        fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#f8fafc"))
         st.plotly_chart(fig2, use_container_width=True)
-    else:
-        st.info("Waiting for valid data attributes.")
 
-st.write("### 📋 Deep-Dive Rider Records Audit Table")
-available_cols = [c for c in df_filtered.columns if c in [
-    "Rider ID", "Name", "Contract Name", "City", 
-    "Module", "Actual Planned Date", "Status", 
-    "Performance", "Pre-Training metric", "Post-Training Metric", "Feedback"
+# 7. INTERACTIVE PERFORMANCE LEDGER REGISTER TABLE
+st.write("### 📋 Deep-Dive Operational Records Audit Table Ledger")
+viewable_columns_schema = [col for col in df_filtered.columns if col in [
+    "Rider ID", "Name", "Contract Name", "City", "Module", "Planned Date", "Status", "Performance", "Feedback"
 ]]
-st.dataframe(df_filtered[available_cols], use_container_width=True, hide_index=True)
+st.dataframe(df_filtered[viewable_columns_schema], use_container_width=True, hide_index=True)
