@@ -18,7 +18,6 @@ st.markdown("""
         .stMetric { background-color: #1e293b; border: 1px solid #334155; padding: 22px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         div[data-testid="stMetricValue"] { color: #ffffff !important; font-family: monospace; font-size: 2.6rem !important; font-weight: 700; }
         div[data-row="true"] { gap: 12px !important; }
-        /* Style radio buttons cleanly to mimic horizontal panel sliders */
         div[data-testid="stWidgetLabel"] p { color: #94a3b8 !important; font-weight: 600 !important; }
     </style>
 """, unsafe_allow_html=True)
@@ -26,45 +25,55 @@ st.markdown("""
 # 2. Resilient Internal Data Extraction Pipeline
 @st.cache_data(ttl=10)
 def load_native_data():
+    # Read CSV and drop completely empty unparsed structural padding columns
     df = pd.read_csv("data.csv")
-    # Force clean structural text processing across all column tags
+    df = df.dropna(how='all', axis=1)
+    
+    # Strip whitespace from column headers
     df.columns = df.columns.str.strip()
     
-    # Intelligently adapt column schemas for variations between data sheets
+    # Standardize our targeted operational tags safely
     standard_map = {}
     for col in df.columns:
         c_low = col.lower()
         if 'rider id' in c_low: standard_map[col] = 'Rider ID'
-        elif 'name' in c_low: standard_map[col] = 'Name'
         elif 'contract' in c_low: standard_map[col] = 'Contract Name'
         elif 'city' in c_low: standard_map[col] = 'City'
         elif 'module' in c_low: standard_map[col] = 'Module'
         elif 'status' in c_low: standard_map[col] = 'Status'
         elif 'performance' in c_low: standard_map[col] = 'Performance'
-        elif 'pre-training' in c_low: standard_map[col] = 'Pre-Training Metric'
-        elif 'post-training' in c_low: standard_map[col] = 'Post-Training Metric'
         elif 'feedback' in c_low: standard_map[col] = 'Feedback'
         elif 'date' in c_low: standard_map[col] = 'Planned Date'
+        elif col == 'Name': standard_map[col] = 'Name'
     
     df = df.rename(columns=standard_map)
     
-    # Fill in structural column placeholders dynamically if missing from snapshot fields
-    core_architecture = ['Rider ID', 'Name', 'Contract Name', 'City', 'Module', 'Planned Date', 'Status', 'Performance', 'Pre-Training Metric', 'Post-Training Metric', 'Feedback']
+    # Ensure target core fields exist; if missing, pad cleanly
+    core_architecture = ['Rider ID', 'Name', 'Contract Name', 'City', 'Module', 'Planned Date', 'Status', 'Performance', 'Feedback']
     for element in core_architecture:
-        if element in df.columns:
-            df[element] = df[element].astype(str).str.strip()
-        else:
+        if element not in df.columns:
             df[element] = "Not Documented"
             
+    # CRASH PROTECTION: Force conversion to simple strings before clearing whitespaces
+    for element in core_architecture:
+        # If duplicated columns exist, pick the first one to avoid DataFrame subset exceptions
+        if isinstance(df[element], pd.DataFrame):
+            df[element] = df[element].iloc[:, 0]
+        df[element] = df[element].astype(str).str.strip()
+            
+    # Drop rows that are just empty pivot remnants
+    df = df[df["Rider ID"] != "nan"]
+    df = df[df["Rider ID"] != ""]
+    
     return df
 
 try:
     df_raw = load_native_data()
 except Exception as error_logs:
-    st.error(st.error(f"Local Ledger Pipeline Disrupted. Diagnostics: {error_logs}"))
+    st.error(f"Local Ledger Pipeline Disrupted. Diagnostics: {error_logs}")
     st.stop()
 
-# Dashboard Interactive Controls Banner Panel Setup
+# Dashboard Header
 col_branding, col_title, col_reset = st.columns([0.8, 4, 1.5])
 with col_title:
     st.title("🍊 talabat Operations Hub")
@@ -76,20 +85,23 @@ with col_reset:
 
 st.write("---")
 
-# 3. COMPACT HORIZONTAL CONTROL DECKS (Radio Matrix Strips)
+# 3. INTERACTIVE SLIDER PANELS
 st.write("### 📍 Fleet Control Parameters")
 control_col1, control_col2, control_col3 = st.columns(3)
 
 with control_col1:
-    valid_cities = ["All Focus Areas"] + sorted([c for c in df_raw["City"].unique() if c not in ["N/A", "nan", "Not Documented"]])
+    unique_cities = sorted([c for c in df_raw["City"].unique() if c not in ["N/A", "nan", "Not Documented"]])
+    valid_cities = ["All Focus Areas"] + unique_cities
     selected_city = st.radio("Regional Hub Location Focus", options=valid_cities, index=0, horizontal=True)
 
 with control_col2:
-    valid_modules = ["All Operational Segments"] + sorted([m for m in df_raw["Module"].unique() if m not in ["N/A", "nan", "Not Documented"]])
+    unique_modules = sorted([m for m in df_raw["Module"].unique() if m not in ["N/A", "nan", "Not Documented"]])
+    valid_modules = ["All Operational Segments"] + unique_modules
     selected_module = st.radio("Core Optimization Module Focus", options=valid_modules, index=0, horizontal=True)
 
 with control_col3:
-    valid_status = ["All Status Outputs"] + sorted([s for s in df_raw["Status"].unique() if s not in ["N/A", "nan", "Not Documented"]])
+    unique_statuses = sorted([s for s in df_raw["Status"].unique() if s not in ["N/A", "nan", "Not Documented"]])
+    valid_status = ["All Status Outputs"] + unique_statuses
     selected_status = st.radio("Training Attendance Logs Filter", options=valid_status, index=0, horizontal=True)
 
 # 4. Fleet Data Matrix Filtration Engine
@@ -102,8 +114,8 @@ if selected_module != "All Operational Segments":
 if selected_status != "All Status Outputs":
     df_filtered = df_filtered[df_filtered["Status"] == selected_status]
 
-# Global Query Search Indexer Bar (Instant search via Rider Name or Unique Identity Code)
-search_query = st.text_input("🔍 Quick Global Audit Registry Index Search (Type Rider Name, Company, or ID Number)", placeholder="Awaiting search criteria input string...")
+# Global Query Search Indexer Bar
+search_query = st.text_input("🔍 Quick Global Audit Registry Index Search (Type Rider Name, Company, or ID Number)", placeholder="Start typing...")
 if search_query:
     df_filtered = df_filtered[
         df_filtered["Name"].str.contains(search_query, case=False) |
@@ -126,7 +138,7 @@ with metric_col2:
 with metric_col3:
     st.metric(label="Operational Engagement Rate", value=f"{engagement_conversion_ratio}%")
 
-# 6. CHART GEOMETRY DESIGNS (Horizontal Axis Distribution Matrix)
+# 6. CHART GEOMETRY DESIGNS
 chart_col1, chart_col2 = st.columns(2)
 
 with chart_col1:
