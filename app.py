@@ -3,18 +3,15 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# 1. Premium wide page layout engine
 st.set_page_config(
     page_title="talabat UAE Logistics Deck",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom talabat Brand Visual Refinements (Clean White Headers, Gray Contours)
 st.markdown("""
     <style>
         .stMainBlock { background-color: #0f172a; }
-        /* Clean white layout headers */
         h1 { color: #ffffff !important; font-weight: 800 !important; letter-spacing: -1px; }
         h3 { color: #f8fafc !important; font-weight: 700 !important; margin-top: 20px; }
         .stMetric { background-color: #1e293b; border: 1px solid #334155; padding: 22px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
@@ -24,7 +21,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Data Connection Engine
 @st.cache_data(ttl=10)
 def load_native_data():
     df = pd.read_csv("data.csv")
@@ -68,7 +64,6 @@ except Exception as error_logs:
     st.error(f"Local Ledger Pipeline Disrupted. Diagnostics: {error_logs}")
     st.stop()
 
-# Dashboard Header Layout
 col_title, col_reset = st.columns([4, 1.5])
 with col_title:
     st.title("🍊 talabat Operations Hub")
@@ -80,9 +75,7 @@ with col_reset:
 
 st.write("---")
 
-# 3. HIGH-SIGNAL RECTANGULAR PILL BOX PANELS
 st.write("### 📍 Fleet Control Parameters")
-
 unique_cities = sorted([c for c in df_raw["City"].unique() if c not in ["N/A", "nan", "Not Documented"]])
 valid_cities = ["All Focus Areas"] + unique_cities
 selected_city = st.pills("Regional Hub Location Focus", options=valid_cities, default="All Focus Areas")
@@ -95,7 +88,6 @@ unique_statuses = sorted([s for s in df_raw["Status"].unique() if s not in ["N/A
 valid_status = ["All Status Outputs"] + unique_statuses
 selected_status = st.pills("Training Attendance Logs Filter", options=valid_status, default="All Status Outputs")
 
-# 4. GRANULAR DROPDOWN CONTROL DECK
 st.write("### 🔍 Granular Dropdown Selectors")
 drop_col1, drop_col2, drop_col3, drop_col4 = st.columns(4)
 
@@ -112,10 +104,8 @@ with drop_col3:
 with drop_col4:
     selected_drop_status = st.selectbox("Dropdown Quick-Jump: Status", options=["Synchronized with Pill Panel"] + unique_statuses)
 
-# 5. Filtration Intersect Logic
 df_filtered = df_raw.copy()
 
-# Sync Dropdowns with Pills if explicitly selected
 city_filter_val = selected_drop_city if selected_drop_city != "Synchronized with Pill Panel" else selected_city
 module_filter_val = selected_drop_module if selected_drop_module != "Synchronized with Pill Panel" else selected_module
 status_filter_val = selected_drop_status if selected_drop_status != "Synchronized with Pill Panel" else selected_status
@@ -129,7 +119,6 @@ if status_filter_val != "All Status Outputs" and status_filter_val != "Synchroni
 if selected_co != "All Partner Vendors":
     df_filtered = df_filtered[df_filtered["Contract Name"] == selected_co]
 
-# Global Query Search Indexer Bar
 search_query = st.text_input("🔍 Search Registry Index (Type Rider Name, Vendor Company, or ID Number)", placeholder="Start typing...")
 if search_query:
     df_filtered = df_filtered[
@@ -138,7 +127,6 @@ if search_query:
         df_filtered["Contract Name"].str.contains(search_query, case=False)
     ]
 
-# 6. MACRO PERFORMANCE KPIS
 st.write("### ⚡ Macro Visual Operations Metrics")
 metric_col1, metric_col2, metric_col3 = st.columns(3)
 
@@ -153,19 +141,14 @@ with metric_col2:
 with metric_col3:
     st.metric(label="Operational Engagement Rate", value=f"{engagement_conversion_ratio}%")
 
-# 7. VISUAL GEOMETRY DESIGNS & FUTURE-PROOF RECONCILIATION CHARTS
 chart_col1, chart_col2 = st.columns(2)
 
 with chart_col1:
     if not df_filtered.empty:
         distribution_chart_df = df_filtered.groupby(["Module", "Status"]).size().reset_index(name="Riders Count")
         fig1 = px.bar(
-            distribution_chart_df,
-            x="Module",
-            y="Riders Count",
-            color="Status",
-            title="Volume Density Classification Mix",
-            barmode="stack",
+            distribution_chart_df, x="Module", y="Riders Count", color="Status",
+            title="Volume Density Classification Mix", barmode="stack",
             color_discrete_map={"Attended": "#10b981", "Not Attended": "#ef4444", "Not Documented": "#64748b"}
         )
         fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#f8fafc"))
@@ -174,16 +157,12 @@ with chart_col1:
 with chart_col2:
     if not df_filtered.empty:
         fig2 = px.pie(
-            df_filtered,
-            names="City",
-            title="Geographic Hub Distribution Densities Matrix",
-            hole=0.4,
-            color_discrete_sequence=px.colors.sequential.Oranges_r
+            df_filtered, names="City", title="Geographic Hub Distribution Densities Matrix",
+            hole=0.4, color_discrete_sequence=px.colors.sequential.Oranges_r
         )
         fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#f8fafc"))
         st.plotly_chart(fig2, use_container_width=True)
 
-# FUTURE METRICS ENGINE CHECK: Renders instantly when performance columns are populated
 has_perf_data = not df_filtered.empty and df_filtered["Performance"].iloc[0] != "Not Documented"
 has_metric_data = not df_filtered.empty and df_filtered["Pre-Training Metric"].iloc[0] != "Not Documented"
 
@@ -202,13 +181,10 @@ if has_perf_data or has_metric_data:
             )
             fig_perf.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_perf, use_container_width=True)
-        else:
-            st.info("Awaiting structural values for 'Performance' column mapping to unlock growth trend views.")
             
     with perf_chart_col2:
         if has_metric_data:
             try:
-                # Calculate simple means of historical performance score metrics
                 df_filtered["Pre-Training Metric"] = pd.to_numeric(df_filtered["Pre-Training Metric"], errors='coerce')
                 df_filtered["Post-Training Metric"] = pd.to_numeric(df_filtered["Post-Training Metric"], errors='coerce')
                 avg_pre = df_filtered["Pre-Training Metric"].mean()
@@ -221,11 +197,8 @@ if has_perf_data or has_metric_data:
                 fig_delta.update_layout(title="Strategic Metric Delta Pre vs Post Evaluation", template="plotly_dark", barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig_delta, use_container_width=True)
             except Exception:
-                st.info("Ensure Pre/Post Metric entries are typed as raw numbers to map historical deltas.")
-        else:
-            st.info("Awaiting numeric tracking metrics to verify operational score delta visualizations.")
+                pass
 
-# 8. INTERACTIVE PERFORMANCE LEDGER REGISTER TABLE
 st.write("### 📋 Deep-Dive Rider Records Audit Table Ledger")
 viewable_columns_schema = [col for col in df_filtered.columns if col in [
     "Rider ID", "Name", "Contract Name", "City", "Module", "Planned Date", "Status", "Performance", "Pre-Training Metric", "Post-Training Metric", "Feedback"
