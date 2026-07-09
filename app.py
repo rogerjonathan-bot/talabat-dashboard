@@ -197,7 +197,7 @@ if has_perf_data or has_metric_data:
             st.plotly_chart(fig_perf, use_container_width=True)
             
     with perf_chart_col2:
-        if_has_metric_data:
+        if has_metric_data:
             try:
                 df_filtered["Pre-Training Metric"] = pd.to_numeric(df_filtered["Pre-Training Metric"], errors='coerce')
                 df_filtered["Post-Training Metric"] = pd.to_numeric(df_filtered["Post-Training Metric"], errors='coerce')
