@@ -1,158 +1,221 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
 
-# --- 1. CORE APP CONTEXT CONFIGURATION ---
+# 1. Premium wide page layout engine
 st.set_page_config(
-    page_title="Talabat Training Control Hub",
-    page_icon="📊",
+    page_title="Talabat Existing Rider Training Dashboard",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom branding adjustments for responsive tables and elements
+# Custom talabat Brand Visual Refinements (Clean White Headers, Gray Contours)
 st.markdown("""
     <style>
-        .block-container { padding-top: 2rem; padding-bottom: 2rem; }
-        div[data-testid="stMetricValue"] { font-size: 28px !important; font-weight: bold; color: rgb(232, 52, 61); }
-        .stButton>button { border-radius: 6px; }
+        .stMainBlock { background-color: #0f172a; }
+        /* Clean white layout headers */
+        h1 { color: #ffffff !important; font-weight: 800 !important; letter-spacing: -1px; }
+        h3 { color: #f8fafc !important; font-weight: 700 !important; margin-top: 20px; }
+        .stMetric { background-color: #1e293b; border: 1px solid #334155; padding: 22px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        div[data-testid="stMetricValue"] { color: #ffffff !important; font-family: monospace; font-size: 2.6rem !important; font-weight: 700; }
+        div[data-row="true"] { gap: 12px !important; }
+        div[data-testid="stWidgetLabel"] p { color: #94a3b8 !important; font-weight: 600 !important; font-size: 0.95rem; }
     </style>
 """, unsafe_allow_html=True)
 
-
-# --- 2. SECURE DATA REPOSITORY INGESTION ENGINE ---
-@st.cache_data(ttl=3600)  # Caches data for 1 hour unless the purge button is clicked
-def fetch_operations_data():
-    """
-    Connects to your master Google Sheet repository and cleanses the rows dynamically.
-    Replace the template URL string below with your actual Google Sheet CSV Export link.
-    """
-    # SHEET_ID = "YOUR_SPREADSHEET_ID_HERE"
-    # SHEET_NAME = "Existing%20Riders%20Training"
-    # csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
+# 2. Data Connection Engine
+@st.cache_data(ttl=10)
+def load_native_data():
+    df = pd.read_csv("data.csv")
+    df = df.dropna(how='all', axis=1)
+    df.columns = df.columns.str.strip()
     
-    # --- DUMMY GENERATOR FOR TESTING & ROBUST INITIALIZATION ---
-    # Delete or comment out this block when attaching your live sheet connection URL string.
-    np.random.seed(42)
-    sample_size = 120
-    mock_partners = ["Vendor A Logistics", "Vendor B UAE", "Speedy Delivery LLC", "Al Ain Fleet Pros"]
-    mock_modules = ["Road Safety Compliance Deck", "Customer Experience Optimization", "App Performance & Flow"]
-    mock_cities = ["Dubai", "Abu Dhabi", "Al Ain", "Sharjah", "Ajman", "RAK", "Fujairah"]
-    mock_statuses = ["Attended", "Not Attended", "Rescheduled"]
+    standard_map = {}
+    for col in df.columns:
+        c_low = col.lower()
+        if 'rider id' in c_low: standard_map[col] = 'Rider ID'
+        elif 'contract' in c_low: standard_map[col] = 'Contract Name'
+        elif 'city' in c_low: standard_map[col] = 'City'
+        elif 'module' in c_low: standard_map[col] = 'Module'
+        elif 'status' in c_low: standard_map[col] = 'Status'
+        elif 'performance' in c_low: standard_map[col] = 'Performance'
+        elif 'feedback' in c_low: standard_map[col] = 'Feedback'
+        elif 'date' in c_low: standard_map[col] = 'Planned Date'
+        elif 'pre-training' in c_low: standard_map[col] = 'Pre-Training Metric'
+        elif 'post-training' in c_low: standard_map[col] = 'Post-Training Metric'
+        elif col == 'Name': standard_map[col] = 'Name'
     
-    df = pd.DataFrame({
-        'Rider ID': np.random.randint(100000, 999999, size=sample_size),
-        'Name': [f"Rider Asset {i}" for i in range(1, sample_size + 1)],
-        'Contract Name': np.random.choice(mock_partners, size=sample_size),
-        'City': np.random.choice(mock_cities, size=sample_size),
-        'Module': np.random.choice(mock_modules, size=sample_size),
-        'Planned Date': [pd.Timestamp('2026-07-10').strftime('%d-%m-%Y')] * sample_size,
-        'Status': np.random.choice(mock_statuses, size=sample_size, p=[0.70, 0.20, 0.10])
-    })
+    df = df.rename(columns=standard_map)
+    
+    core_architecture = ['Rider ID', 'Name', 'Contract Name', 'City', 'Module', 'Planned Date', 'Status', 'Performance', 'Feedback', 'Pre-Training Metric', 'Post-Training Metric']
+    for element in core_architecture:
+        if element not in df.columns:
+            df[element] = "Not Documented"
+            
+    for element in core_architecture:
+        if isinstance(df[element], pd.DataFrame):
+            df[element] = df[element].iloc[:, 0]
+        df[element] = df[element].astype(str).str.strip()
+            
+    df = df[df["Rider ID"] != "nan"]
+    df = df[df["Rider ID"] != ""]
     return df
 
-# Initialize dataframe load state
 try:
-    raw_df = fetch_operations_data()
-    # Clean data string formatting parameters natively
-    raw_df['Rider ID'] = raw_df['Rider ID'].astype(str)
-    raw_df['Contract Name'] = raw_df['Contract Name'].fillna("Not Documented").strip() if hasattr(raw_df['Contract Name'], 'strip') else raw_df['Contract Name']
-except Exception as e:
-    st.error(f"Critical Ingestion Error encountered connecting to primary sheets registry: {e}")
+    df_raw = load_native_data()
+except Exception as error_logs:
+    st.error(f"Local Ledger Pipeline Disrupted. Diagnostics: {error_logs}")
     st.stop()
 
-
-# --- 3. REVISION MANAGEMENT HEADER ---
+# Dashboard Header Layout
 col_title, col_reset = st.columns([4, 1.5])
 with col_title:
-    st.title("Talabat Existing Rider Training Dashboard")
-    st.caption("UAE Existing Rider Training")
+    st.title("🍊 Talabat Existing Rider Training Dashboard")
+    st.caption("Secure Local Data Repository Execution Active • UAE Fleet Framework")
 with col_reset:
-    # Live data reload cache flush mechanism
     if st.button("🔄 Purge System Cache", use_container_width=True):
         st.cache_data.clear()
-        st.toast("System cache purged successfully. Reloading live rows...", icon="⚡")
         st.rerun()
 
-st.divider()
+st.write("---")
 
+# 3. TYPE-SAFE RECTANGULAR PILL BOX PANELS
+st.write("### 📍 Fleet Control Parameters")
 
-# --- 4. DATA MATRIX FILTER PILLS ---
-st.markdown("### 🔍 Filter Parameters")
-col_pill_city, col_pill_mod, col_pill_fp = st.columns(3)
+unique_cities = sorted([str(c) for c in df_raw["City"].unique() if str(c) not in ["N/A", "nan", "Not Documented"]])
+valid_cities = ["All Focus Areas"] + unique_cities
+selected_city = st.pills("Regional Hub Location Focus", options=valid_cities, default="All Focus Areas")
 
-with col_pill_city:
-    available_cities = sorted(raw_df['City'].unique().tolist())
-    selected_cities = st.multiselect("Select City Hub:", options=available_cities, default=available_cities)
+unique_modules = sorted([str(m) for m in df_raw["Module"].unique() if str(m) not in ["N/A", "nan", "Not Documented"]])
+valid_modules = ["All Operational Segments"] + unique_modules
+selected_module = st.pills("Core Optimization Module Focus", options=valid_modules, default="All Operational Segments")
 
-with col_pill_mod:
-    available_modules = sorted(raw_df['Module'].unique().tolist())
-    selected_modules = st.multiselect("Select Training Module:", options=available_modules, default=available_modules)
+unique_statuses = sorted([str(s) for s in df_raw["Status"].unique() if str(s) not in ["N/A", "nan", "Not Documented"]])
+valid_status = ["All Status Outputs"] + unique_statuses
+selected_status = st.pills("Training Attendance Logs Filter", options=valid_status, default="All Status Outputs")
 
-with col_pill_fp:
-    available_fps = sorted(raw_df['Contract Name'].unique().tolist())
-    selected_fps = st.multiselect("Select Fleet Partner (FP):", options=available_fps, default=available_fps)
+# 4. GRANULAR DROPDOWN CONTROL DECK
+st.write("### 🔍 Granular Dropdown Selectors")
+drop_col1, drop_col2, drop_col3, drop_col4 = st.columns(4)
 
-# Apply filter masks dynamically based on inputs
-filtered_df = raw_df[
-    (raw_df['City'].isin(selected_cities)) &
-    (raw_df['Module'].isin(selected_modules)) &
-    (raw_df['Contract Name'].isin(selected_fps))
-]
+with drop_col1:
+    unique_cos = sorted([str(co) for col in [df_raw["Contract Name"].unique()] for co in col if str(co) not in ["N/A", "nan", "Not Documented"]])
+    selected_co = st.selectbox("Filter by Delivery Company", options=["All Partner Vendors"] + unique_cos)
 
+with drop_col2:
+    selected_drop_city = st.selectbox("Dropdown Quick-Jump: City", options=["Synchronized with Pill Panel"] + unique_cities)
 
-# --- 5. HIGH-LEVEL EXECUTIVE METRICS ---
-total_scheduled = len(filtered_df)
-attended_count = len(filtered_df[filtered_df['Status'].str.lower() == 'attended'])
-no_show_count = len(filtered_df[filtered_df['Status'].str.lower() == 'not attended'])
+with drop_col3:
+    selected_drop_module = st.selectbox("Dropdown Quick-Jump: Module", options=["Synchronized with Pill Panel"] + unique_modules)
 
-attendance_rate = (attended_count / total_scheduled * 100) if total_scheduled > 0 else 0.0
+with drop_col4:
+    selected_drop_status = st.selectbox("Dropdown Quick-Jump: Status", options=["Synchronized with Pill Panel"] + unique_statuses)
 
-metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
-with metric_col1:
-    st.metric(label="Total Scheduled Tasks", value=f"{total_scheduled:,}")
-with metric_col2:
-    st.metric(label="Attended Assets", value=f"{attended_count:,}")
-with metric_col3:
-    st.metric(label="Logged No-Shows", value=f"{no_show_count:,}")
-with metric_col4:
-    st.metric(label="Compliance Core Rate", value=f"{attendance_rate:.1f}%")
+# 5. Filtration Intersect Logic
+df_filtered = df_raw.copy()
 
-st.divider()
+# Sync Dropdowns with Pills if explicitly selected
+city_filter_val = selected_drop_city if selected_drop_city != "Synchronized with Pill Panel" else selected_city
+module_filter_val = selected_drop_module if selected_drop_module != "Synchronized with Pill Panel" else selected_module
+status_filter_val = selected_drop_status if selected_drop_status != "Synchronized with Pill Panel" else selected_status
 
+if city_filter_val != "All Focus Areas" and city_filter_val != "Synchronized with Pill Panel":
+    df_filtered = df_filtered[df_filtered["City"] == city_filter_val]
+if module_filter_val != "All Operational Segments" and module_filter_val != "Synchronized with Pill Panel":
+    df_filtered = df_filtered[df_filtered["Module"] == module_filter_val]
+if status_filter_val != "All Status Outputs" and status_filter_val != "Synchronized with Pill Panel":
+    df_filtered = df_filtered[df_filtered["Status"] == status_filter_val]
+if selected_co != "All Partner Vendors":
+    df_filtered = df_filtered[df_filtered["Contract Name"] == selected_co]
 
-# --- 6. TARGET DATA LEDGER GRID & SEARCH ---
-st.markdown("### 📋 Active Training Ledger Rows")
-
-# Quick search layout parameter
-search_query = st.text_input("⚡ Quick Search (Enter Rider ID or Name):", placeholder="Type keywords here to filter the table rows...").strip()
+# Global Query Search Indexer Bar
+search_query = st.text_input("🔍 Search Registry Index (Type Rider Name, Vendor Company, or ID Number)", placeholder="Start typing...")
 if search_query:
-    filtered_df = filtered_df[
-        (filtered_df['Rider ID'].str.contains(search_query, case=False)) |
-        (filtered_df['Name'].str.contains(search_query, case=False))
+    df_filtered = df_filtered[
+        df_filtered["Name"].str.contains(search_query, case=False) |
+        df_filtered["Rider ID"].str.contains(search_query, case=False) |
+        df_filtered["Contract Name"].str.contains(search_query, case=False)
     ]
 
-# Display data interactive spreadsheet interface window
-if not filtered_df.empty:
-    st.dataframe(
-        filtered_df[['Rider ID', 'Name', 'Contract Name', 'City', 'Module', 'Planned Date', 'Status']],
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Rider ID": st.column_config.TextColumn("Rider ID"),
-            "Planned Date": st.column_config.TextColumn("Planned Date"),
-            "Status": st.column_config.TextColumn("Status", help="Attended, Not Attended, or Rescheduled logs")
-        }
-    )
-else:
-    st.info("No records match the current filter selection arrays or search string queries.")
+# 6. MACRO PERFORMANCE KPIS
+st.write("### ⚡ Macro Visual Operations Metrics")
+metric_col1, metric_col2, metric_col3 = st.columns(3)
 
+total_logged_pool = len(df_filtered)
+validated_attendance_cohort = len(df_filtered[df_filtered["Status"].str.lower() == "attended"])
+engagement_conversion_ratio = round((validated_attendance_cohort / total_logged_pool) * 100) if total_logged_pool > 0 else 0
 
-# --- 7. FOOTER METADATA SECURITY BANNER ---
-st.markdown("""
-    <div style="text-align: center; margin-top: 50px; padding: 15px; border-top: 1px solid #eeeeee;">
-        <p style="font-size: 11px; color: #94a3b8; font-family: sans-serif; margin: 0;">
-            Talabat Logistics Engine Framework • Controlled Asset Portfolio Data Access Stream
-        </p>
-    </div>
-""", unsafe_allow_html=True)
+with metric_col1:
+    st.metric(label="Riders Accounted Pool", value=f"{total_logged_pool:,}")
+with metric_col2:
+    st.metric(label="Validated Attendance Registry", value=f"{validated_attendance_cohort:,}")
+with metric_col3:
+    st.metric(label="Operational Engagement Rate", value=f"{engagement_conversion_ratio}%")
+
+# 7. VISUAL GEOMETRY DESIGNS & FUTURE-PROOF RECONCILIATION CHARTS
+chart_col1, chart_col2 = st.columns(2)
+
+with chart_col1:
+    if not df_filtered.empty:
+        distribution_chart_df = df_filtered.groupby(["Module", "Status"]).size().reset_index(name="Riders Count")
+        fig1 = px.bar(
+            distribution_chart_df, x="Module", y="Riders Count", color="Status",
+            title="Volume Density Classification Mix", barmode="stack",
+            color_discrete_map={"Attended": "#10b981", "Not Attended": "#ef4444", "Not Documented": "#64748b"}
+        )
+        fig1.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#f8fafc"))
+        st.plotly_chart(fig1, use_container_width=True)
+
+with chart_col2:
+    if not df_filtered.empty:
+        fig2 = px.pie(
+            df_filtered, names="City", title="Geographic Hub Distribution Densities Matrix",
+            hole=0.4, color_discrete_sequence=px.colors.sequential.Oranges_r
+        )
+        fig2.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#f8fafc"))
+        st.plotly_chart(fig2, use_container_width=True)
+
+# FUTURE METRICS ENGINE CHECK: Renders instantly when performance columns are populated
+has_perf_data = not df_filtered.empty and df_filtered["Performance"].iloc[0] != "Not Documented"
+has_metric_data = not df_filtered.empty and df_filtered["Pre-Training Metric"].iloc[0] != "Not Documented"
+
+if has_perf_data or has_metric_data:
+    st.write("---")
+    st.write("### 📈 Deep Growth & Performance Quality Analytics")
+    perf_chart_col1, perf_chart_col2 = st.columns(2)
+    
+    with perf_chart_col1:
+        if has_perf_data:
+            perf_chart_df = df_filtered.groupby(["Module", "Performance"]).size().reset_index(name="Count")
+            fig_perf = px.bar(
+                perf_chart_df, x="Module", y="Count", color="Performance",
+                title="Rider Performance Evolution by Segment", barmode="group",
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_perf.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_perf, use_container_width=True)
+            
+    with perf_chart_col2:
+        if has_metric_data:
+            try:
+                df_filtered["Pre-Training Metric"] = pd.to_numeric(df_filtered["Pre-Training Metric"], errors='coerce')
+                df_filtered["Post-Training Metric"] = pd.to_numeric(df_filtered["Post-Training Metric"], errors='coerce')
+                avg_pre = df_filtered["Pre-Training Metric"].mean()
+                avg_post = df_filtered["Post-Training Metric"].mean()
+                
+                fig_delta = go.Figure(data=[
+                    go.Bar(name='Historical Pre-Training Average', x=['Fleet Score Average'], y=[avg_pre], marker_color='#94a3b8'),
+                    go.Bar(name='Validated Post-Training Average', x=['Fleet Score Average'], y=[avg_post], marker_color='#ff5000')
+                ])
+                fig_delta.update_layout(title="Strategic Metric Delta Pre vs Post Evaluation", template="plotly_dark", barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_delta, use_container_width=True)
+            except Exception:
+                pass
+
+# 8. INTERACTIVE PERFORMANCE LEDGER REGISTER TABLE
+st.write("### 📋 Deep-Dive Rider Records Audit Table Ledger")
+viewable_columns_schema = [col for col in df_filtered.columns if col in [
+    "Rider ID", "Name", "Contract Name", "City", "Module", "Planned Date", "Status", "Performance", "Pre-Training Metric", "Post-Training Metric", "Feedback"
+]]
+st.dataframe(df_filtered[viewable_columns_schema], use_container_width=True, hide_index=True)
