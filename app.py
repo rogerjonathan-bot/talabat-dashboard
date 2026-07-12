@@ -86,7 +86,7 @@ with st.sidebar:
             "🖥️ Main Dashboard", 
             "📈 Performance Metrics", 
             "🤝 Fleet Partner Analytics", 
-            "A T-Camp Hub", 
+            "🏕️ T-Camp Hub", 
             "📖 Glossary & Version Documentation"
         ]
     )
@@ -275,7 +275,7 @@ elif app_view == "🤝 Fleet Partner Analytics":
 
 
 # VIEW E: T-CAMP HUB (COMING SOON PENDING PIPELINE)
-elif app_view == "A T-Camp Hub":
+elif app_view == "🏕️ T-Camp Hub":
     st.title("T-Camp Operations Center")
     st.caption("Integrated Rider Onboarding & Accommodation Matrix Mapping")
     st.divider()
@@ -315,10 +315,10 @@ elif app_view == "📖 Glossary & Version Documentation":
         st.markdown("Review the definitions below to understand how the platform calculates its compliance fields:")
         
         glossary_matrix = [
-            {"Parameter Name": "Total Scheduled Tasks", "Calculated Defintion & Formula", "Operational Impact Context"},
-            {"Parameter Name": "Compliance Core Rate", "Calculated Defintion & Formula", "Operational Impact Context"},
-            {"Parameter Name": "High-Risk Asset Tracker", "Calculated Defintion & Formula", "Operational Impact Context"},
-            {"Parameter Name": "SLA Attendance Rate", "Calculated Defintion & Formula", "Operational Impact Context"}
+            {"Parameter Name": "Total Scheduled Tasks", "Calculated Definition & Formula": "Count of total rows assigned", "Operational Impact Context": "Volume baseline"},
+            {"Parameter Name": "Compliance Core Rate", "Calculated Definition & Formula": "(Attended / Total) * 100", "Operational Impact Context": "Main hub score"},
+            {"Parameter Name": "High-Risk Asset Tracker", "Calculated Definition & Formula": "Cancellations > 3.5% or Speed < 80%", "Operational Impact Context": "Flags bad behavior"},
+            {"Parameter Name": "SLA Attendance Rate", "Calculated Definition & Formula": "Vendor specific conversion %", "Operational Impact Context": "Vendor grading"}
         ]
         
         # Display definitions using a structured layout
