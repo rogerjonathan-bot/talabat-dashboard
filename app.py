@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import datetime
 
-# --- 1. SYSTEM INITIALIZATION & DASHBOARD KIT THEMING ---
+# --- 1. SYSTEM INITIALIZATION & THEME LAYER ---
 st.set_page_config(
     page_title="Talabat Training Control Hub",
     page_icon="🍊",
@@ -34,7 +33,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- 2. DATA ACQUISITION & CHRONO-PROCESSING ENGINE ---
+# --- 2. DATA ACQUISITION & PROCESSING ENGINE ---
 @st.cache_data(ttl=1800)
 def load_comprehensive_operations_data():
     np.random.seed(42)
@@ -45,7 +44,6 @@ def load_comprehensive_operations_data():
     mock_cities = ["Dubai", "Abu Dhabi", "Al Ain", "Sharjah", "Ajman", "RAK", "Fujairah"]
     mock_statuses = ["Attended", "Not Attended", "Rescheduled"]
     
-    # Generate continuous historical data points over the last 90 days
     base_date = pd.Timestamp('2026-07-12')
     date_pool = [base_date - pd.Timedelta(days=int(d)) for d in np.random.randint(0, 90, size=sample_size)]
     
@@ -63,12 +61,10 @@ def load_comprehensive_operations_data():
     df['Planned Date'] = df['Timestamp'].dt.strftime('%d-%m-%Y')
     df['Contract Name'] = df['Contract Name'].fillna("Not Documented").astype(str)
     
-    # Time intelligence variables for trend slicing
     df['Date'] = df['Timestamp'].dt.date
     df['Week'] = df['Timestamp'].dt.to_period('W').dt.start_time
     df['Month'] = df['Timestamp'].dt.to_period('M').dt.start_time
     
-    # Behavior data maps
     df['Speed_Compliance_Score'] = np.random.randint(75, 100, size=sample_size)
     df['Order_Cancellation_Rate'] = np.random.uniform(0.5, 4.5, size=sample_size)
     df['Customer_Rating'] = np.random.uniform(4.2, 5.0, size=sample_size)
@@ -87,6 +83,7 @@ with st.sidebar:
     st.markdown("### 🍊 talabat Framework")
     st.markdown("## Navigation Hub")
     
+    # Strictly aligned selection routes
     app_view = st.radio(
         "Jump directly to operational node:",
         options=[
@@ -101,7 +98,6 @@ with st.sidebar:
     
     st.divider()
     
-    # Interactive Date Range Picker Component from Dashboard Kit Reference
     st.markdown("### 📅 Global Time Boundary Filter")
     min_date = master_df['Date'].min()
     max_date = master_df['Date'].max()
@@ -113,11 +109,12 @@ with st.sidebar:
         max_value=max_date
     )
     
-    # Apply time constraints safely
-    if len(selected_date_range) == 2:
+    # 🚨 FIX: DEFENSIVE UNPACKING GUARD FOR TWO-DATE VALUES 🚨
+    if isinstance(selected_date_range, (list, tuple)) and len(selected_date_range) == 2:
         start_date, end_date = selected_date_range
         time_filtered_df = master_df[(master_df['Date'] >= start_date) & (master_df['Date'] <= end_date)]
     else:
+        # Fallback to display everything if selection window is processing/incomplete
         time_filtered_df = master_df
 
     st.divider()
@@ -129,19 +126,17 @@ with st.sidebar:
 
 # --- 4. RENDER ROUTER VIEWS ---
 
-# VIEW 1: OVERVIEW PORTAL (WITH DASHBOARD KIT TIME SLICING)
+# VIEW 1: OVERVIEW PORTAL
 if app_view == "Overview Portal":
     st.title("Operations Overview Portal")
     st.caption("UAE Existing Rider Training • Time-Variant Analytics Summary")
     st.divider()
     
-    # Calculate performance metrics
     total_planned = len(time_filtered_df)
     total_trained = len(time_filtered_df[time_filtered_df['Status'] == 'Attended'])
     total_no_shows = len(time_filtered_df[time_filtered_df['Status'] == 'Not Attended'])
     conv_rate = (total_trained / total_planned * 100) if total_planned > 0 else 0.0
     
-    # Custom HTML Layout using Dashboard Kit's aesthetic design styles
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(f'<div class="metric-card"><div class="metric-label">Total Scheduled</div><div class="metric-value">{total_planned:,}</div><div class="metric-delta delta-positive">▲ Base Pipeline</div></div>', unsafe_allow_html=True)
@@ -154,21 +149,16 @@ if app_view == "Overview Portal":
         
     st.divider()
     
-    # Time frame chart selector controls (Daily, Weekly, Monthly)
     st.markdown("### 📉 Operational Chrono-Trends")
     time_frame = st.radio("Group Trend Visualizations By:", ["Daily Logs", "Weekly Logs", "Monthly Logs"], horizontal=True)
     chart_type = st.selectbox("Select Visual Display Style:", ["Area Chart View", "Bar Chart View"])
     
-    # Dynamically resample dates based on selection
     if time_frame == "Daily Logs":
-        trend_data = time_filtered_df.groupby('Date').size().reset_index(name='Riders Planned')
-        trend_data = trend_data.set_index('Date')
+        trend_data = time_filtered_df.groupby('Date').size().reset_index(name='Riders Planned').set_index('Date')
     elif time_frame == "Weekly Logs":
-        trend_data = time_filtered_df.groupby('Week').size().reset_index(name='Riders Planned')
-        trend_data = trend_data.set_index('Week')
+        trend_data = time_filtered_df.groupby('Week').size().reset_index(name='Riders Planned').set_index('Week')
     else:
-        trend_data = time_filtered_df.groupby('Month').size().reset_index(name='Riders Planned')
-        trend_data = trend_data.set_index('Month')
+        trend_data = time_filtered_df.groupby('Month').size().reset_index(name='Riders Planned').set_index('Month')
         
     if chart_type == "Area Chart View":
         st.area_chart(trend_data, color="#e8343d")
