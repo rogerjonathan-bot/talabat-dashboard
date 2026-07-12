@@ -65,7 +65,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ── DATA ──────────────────────────────────────────────────────────────────────
+# -- DATA ----------------------------------------------------------------------
 @st.cache_data(ttl=1800)
 def load_data():
     np.random.seed(42)
@@ -91,7 +91,7 @@ def load_data():
     df['Planned Date']  = df['Timestamp'].dt.strftime('%d-%m-%Y')
     df['Contract Name'] = df['Contract Name'].fillna("Unknown").astype(str)
 
-    # ── FIX: ISO-sortable keys so charts render chronologically ──────────────
+    # -- FIX: ISO-sortable keys so charts render chronologically --------------
     df['Date_Str']  = df['Timestamp'].dt.strftime('%Y-%m-%d')   # daily
     df['Week_Str']  = df['Timestamp'].dt.strftime('%Y-W%U')     # weekly  (was "Week %U (%Y)" → alpha-sorted wrong)
     df['Month_Str'] = df['Timestamp'].dt.strftime('%Y-%m')      # monthly (was "%B %Y" → alpha-sorted wrong = CRASH)
@@ -109,7 +109,7 @@ except Exception as e:
     st.stop()
 
 
-# ── SIDEBAR ───────────────────────────────────────────────────────────────────
+# -- SIDEBAR -------------------------------------------------------------------
 with st.sidebar:
     st.markdown("### 🍊 talabat")
     st.markdown("#### Training Control Hub")
@@ -148,7 +148,7 @@ with st.sidebar:
         st.rerun()
 
 
-# ── HELPERS ───────────────────────────────────────────────────────────────────
+# -- HELPERS -------------------------------------------------------------------
 def kpi(col, label, value, sub="", color="orange"):
     with col:
         st.markdown(f"""
@@ -164,9 +164,9 @@ def status_pill(s):
     return f'<span class="status-pill pill-rescheduled">Rescheduled</span>'
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VIEW 1 — OVERVIEW  (the beautiful one)
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+# VIEW 1 - OVERVIEW  (the beautiful one)
+# ==============================================================================
 if "Overview" in view:
     st.markdown("## Operations Overview")
     st.caption("UAE Existing Rider Training · real-time compliance snapshot")
@@ -194,7 +194,7 @@ if "Overview" in view:
     trend = (fdf.groupby(key)
                .size()
                .reset_index(name='Riders Planned')
-               .sort_values(key)          # ← explicit sort: fixes monthly crash
+               .sort_values(key)          # # explicit sort: fixes monthly crash
                .set_index(key))
 
     if ct == "Area":
@@ -237,9 +237,9 @@ if "Overview" in view:
     st.dataframe(module_df, use_container_width=True, hide_index=True)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VIEW 2 — TRAINING LEDGER
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+# VIEW 2 - TRAINING LEDGER
+# ==============================================================================
 elif "Ledger" in view:
     st.markdown("## Training Ledger")
     st.caption("Full attendance records with search & fleet-partner filter")
@@ -271,9 +271,9 @@ elif "Ledger" in view:
         st.dataframe(show, use_container_width=True, hide_index=True)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VIEW 3 — CITY ANALYTICS  (new)
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+# VIEW 3 - CITY ANALYTICS  (new)
+# ==============================================================================
 elif "City" in view:
     st.markdown("## City Analytics")
     st.caption("Hub-level compliance, attendance trends, and module breakdown by city")
@@ -341,9 +341,9 @@ elif "City" in view:
                  use_container_width=True, hide_index=True)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VIEW 4 — PERFORMANCE ENGINE
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+# VIEW 4 - PERFORMANCE ENGINE
+# ==============================================================================
 elif "Performance" in view:
     st.markdown("## Fleet Performance Engine")
     st.caption("Post-training operational behaviour analytics")
@@ -365,9 +365,9 @@ elif "Performance" in view:
     st.bar_chart(speed_city.set_index('City'), color="#10b981")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VIEW 5 — PARTNER RANKINGS
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+# VIEW 5 - PARTNER RANKINGS
+# ==============================================================================
 elif "Partner" in view:
     st.markdown("## Fleet Partner Rankings")
     st.caption("SLA compliance and vendor performance leaderboard")
@@ -391,26 +391,26 @@ elif "Partner" in view:
     st.bar_chart(fp.set_index('Contract Name')['SLA_%'], color="#FF6B35")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VIEW 6 — T-CAMP
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+# VIEW 6 - T-CAMP
+# ==============================================================================
 elif "T-Camp" in view:
     st.markdown("## T-Camp Operations")
-    st.warning("🚧 Coming soon — accommodation matrix mapping pending pipeline config")
+    st.warning("🚧 Coming soon - accommodation matrix mapping pending pipeline config")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VIEW 7 — DOCS
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+# VIEW 7 - DOCS
+# ==============================================================================
 elif "Docs" in view:
     st.markdown("## Reference documentation")
     t1, t2 = st.tabs(["Architecture v1.0", "Glossary"])
     with t1:
         st.markdown("""
-- **Python / pandas / numpy** — data ingestion and transformation
-- **Streamlit ≥ 1.28** — UI framework, PWA-pinnable on mobile
-- **Google Apps Script** — daily 6 PM partner compliance email trigger
-- **Google Sheets** — live data source (replace mock data with `gspread` connector)
+- **Python / pandas / numpy** - data ingestion and transformation
+- **Streamlit ≥ 1.28** - UI framework, PWA-pinnable on mobile
+- **Google Apps Script** - daily 6 PM partner compliance email trigger
+- **Google Sheets** - live data source (replace mock data with `gspread` connector)
         """)
     with t2:
         st.markdown("""
@@ -422,7 +422,7 @@ elif "Docs" in view:
         """)
 
 
-# ── FOOTER ────────────────────────────────────────────────────────────────────
+# -- FOOTER --------------------------------------------------------------------
 st.markdown("""
 <div style="text-align:center;margin-top:60px;padding:16px;border-top:1px solid #f1f5f9;">
   <p style="font-size:11px;color:#94a3b8;margin:0;">
