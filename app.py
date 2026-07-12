@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# --- 1. CORE SYSTEM INITIALIZATION & THEME LAYER ---
+# --- 1. SYSTEM INITIALIZATION & THEME LAYER ---
 st.set_page_config(
     page_title="Talabat Training Control Hub",
     page_icon="🍊",
@@ -21,12 +21,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- 2. DATA ACQUISITION & AUTOMATED PROCESSING LAYER ---
-@st.cache_data(ttl=1800)  # Cache duration set to 30 minutes
+# --- 2. DATA ACQUISITION & PROCESSING LAYER ---
+@st.cache_data(ttl=1800)
 def load_comprehensive_operations_data():
     """
     Ingests and constructs active operations records for tracking execution metrics.
-    Connect your actual spreadsheet parsing url string here for live syncing.
     """
     np.random.seed(10)
     sample_size = 500
@@ -36,7 +35,6 @@ def load_comprehensive_operations_data():
     mock_cities = ["Dubai", "Abu Dhabi", "Al Ain", "Sharjah", "Ajman", "RAK", "Fujairah"]
     mock_statuses = ["Attended", "Not Attended", "Rescheduled"]
     
-    # Generate historical dates across past weeks for macro analysis logs
     base_date = pd.Timestamp('2026-07-11')
     date_pool = [base_date - pd.Timedelta(days=int(d)) for d in np.random.randint(0, 45, size=sample_size)]
     
@@ -50,16 +48,12 @@ def load_comprehensive_operations_data():
         'Status': np.random.choice(mock_statuses, size=sample_size, p=[0.72, 0.20, 0.08])
     })
     
-    # Cast variables and compile standard human-readable display components
     df['Rider ID'] = df['Rider ID'].astype(str)
     df['Planned Date'] = df['Timestamp'].dt.strftime('%d-%m-%Y')
     df['Contract Name'] = df['Contract Name'].fillna("Not Documented").astype(str)
-    
-    # Metrics parsing parameters
     df['Week_Number'] = df['Timestamp'].dt.isocalendar().week
     df['Month_Name'] = df['Timestamp'].dt.strftime('%B %Y')
     
-    # Performance tracking factors (Mock metrics mapping)
     df['Speed_Compliance_Score'] = np.random.randint(75, 100, size=sample_size)
     df['Order_Cancellation_Rate'] = np.random.uniform(0.5, 4.5, size=sample_size)
     df['Customer_Rating'] = np.random.uniform(4.2, 5.0, size=sample_size)
@@ -78,7 +72,6 @@ with st.sidebar:
     st.markdown("### 🍊 talabat Framework")
     st.markdown("## Navigation Hub")
     
-    # Sidebar selection slider menu
     app_view = st.radio(
         "Jump directly to operational node:",
         options=[
@@ -93,7 +86,6 @@ with st.sidebar:
     
     st.divider()
     
-    # System Cache control panel
     if st.button("🔄 Clear System Cache Engine", use_container_width=True):
         st.cache_data.clear()
         st.toast("Internal caching cleared. Synchronizing live data streams...", icon="⚡")
@@ -108,10 +100,8 @@ if app_view == "📊 Overview":
     st.caption("UAE Existing Rider Training • High-Level Performance Aggregations")
     st.divider()
     
-    # High-level macro card blocks
     t_planned = len(master_df)
     t_trained = len(master_df[master_df['Status'] == 'Attended'])
-    t_no_show = len(master_df[master_df['Status'] == 'Not Attended'])
     
     m_col1, m_col2, m_col3 = st.columns(3)
     m_col1.metric("Total Riders Planned", f"{t_planned:,}")
@@ -120,20 +110,17 @@ if app_view == "📊 Overview":
     
     st.divider()
     
-    # Time-based operational analytics selectors
     st.markdown("### 🗓️ Core Time-Variant Tracking Analytics")
     time_tab_week, time_tab_month = st.tabs(["Weekly Ingestion Analytics", "Monthly Aggregations"])
     
     with time_tab_week:
         st.markdown("#### Weekly Training Logs Matrix")
         
-        # Group data across target week intervals
         weekly_summary = master_df.groupby(['Week_Number', 'City', 'Module']).agg(
             Planned=('Rider ID', 'count'),
             Trained=('Status', lambda x: (x == 'Attended').sum())
         ).reset_index()
         
-        # Aggregate view selection parameters
         target_week = st.selectbox("Select Week Window View:", options=sorted(weekly_summary['Week_Number'].unique().tolist(), reverse=True))
         week_df = weekly_summary[weekly_summary['Week_Number'] == target_week]
         
@@ -142,7 +129,6 @@ if app_view == "📊 Overview":
         
         st.info(f"👉 **UAE Weekly Performance Summary:** In Week {target_week}, **{w_total_p}** riders were planned and **{w_total_t}** successfully completed modules.")
         
-        # Breakdowns across cities
         st.markdown("**City Breakdowns for the selected Week:**")
         city_w_table = week_df.groupby('City')[['Planned', 'Trained']].sum()
         st.dataframe(city_w_table, use_container_width=True)
@@ -174,15 +160,12 @@ elif app_view == "🖥️ Main Dashboard":
     st.caption("UAE Existing Rider Training")
     st.divider()
     
-    # 🔍 RE-ENGINEERED COMPACT PARAMETERS FILTER
     st.markdown("### 🔍 Delivery Company Focus")
     available_fps = sorted(master_df['Contract Name'].unique().tolist())
     selected_fps = st.multiselect("Filter by Delivery Company (Fleet Partner):", options=available_fps, default=available_fps)
     
-    # Apply filtering arrays cleanly
     dash_filtered_df = master_df[master_df['Contract Name'].isin(selected_fps)]
     
-    # Primary Operational Statistics
     d_total = len(dash_filtered_df)
     d_attended = len(dash_filtered_df[dash_filtered_df['Status'] == 'Attended'])
     d_no_show = len(dash_filtered_df[dash_filtered_df['Status'] == 'Not Attended'])
@@ -196,7 +179,6 @@ elif app_view == "🖥️ Main Dashboard":
     
     st.divider()
     
-    # Target Data Ledger and Quick Global Search Bar
     st.markdown("### 📋 Active Training Ledger Rows")
     search_query = st.text_input("⚡ Quick Search (Enter Rider ID or Name Keyphrase):", placeholder="Search records...").strip()
     
@@ -223,7 +205,6 @@ elif app_view == "📈 Performance Metrics":
     st.divider()
     
     st.markdown("### 📊 Rider Core Performance Indicators")
-    st.markdown("This view compiles post-training operational attributes across safety compliance thresholds, order cancellation baselines, and rating metrics.")
     
     perf_col1, perf_col2, perf_col3 = st.columns(3)
     perf_col1.metric("Avg Speed Compliance Score", f"{master_df['Speed_Compliance_Score'].mean():.1f}%")
@@ -231,7 +212,6 @@ elif app_view == "📈 Performance Metrics":
     perf_col3.metric("Avg Customer Service Rating", f"{master_df['Customer_Rating'].mean():.2f} ★")
     
     st.markdown("#### High-Risk Asset Review Ledger")
-    st.markdown("The following matrix flags riders falling outside critical baseline parameters (e.g., Cancellation Rate greater than 3.5% or Speed Score less than 80%):")
     
     high_risk_df = master_df[
         (master_df['Order_Cancellation_Rate'] > 3.5) | 
@@ -274,14 +254,13 @@ elif app_view == "🤝 Fleet Partner Analytics":
     )
 
 
-# VIEW E: T-CAMP HUB (COMING SOON PENDING PIPELINE)
+# VIEW E: T-CAMP HUB
 elif app_view == "🏕️ T-Camp Hub":
     st.title("T-Camp Operations Center")
     st.caption("Integrated Rider Onboarding & Accommodation Matrix Mapping")
     st.divider()
     
     st.warning("🚧 Coming Soon: System Node Pending Pipeline Configuration")
-    st.info("The T-Camp analytical framework is locked awaiting final cleanups from the external asset registry tables. Connection logic hooks will execute automatically once live streams are verified.")
 
 
 # VIEW F: GLOSSARY & DOCUMENTATION ARCHIVE
@@ -297,31 +276,20 @@ elif app_view == "📖 Glossary & Version Documentation":
         ### System Architecture Specification — Version 1.0
         
         #### 1. Project Objective & Strategic Scope
-        This centralized intelligence platform automates tracking logs across the UAE Existing Rider Training project lifecycle. By bridging core data registries directly with visual metric components, it transforms records into operational steps, helping field teams flag low compliance scores, assign accountability to vendors, and curb training absences.
+        This centralized intelligence platform automates tracking logs across the UAE Existing Rider Training project lifecycle.
         
         #### 2. Key Business Outcomes Achieved
         * **Eliminated Reporting Lag:** Shifts operations from static weekly file processing to a reactive web view updated automatically.
         * **Unified Vendor Accountability:** Built-in tracking lists isolate low-performing partners instantly for immediate SLA audits.
-        * **Optimized Fleet Performance:** Ties post-training behaviors (cancellation baselines, safety indicators) to corporate compliance visibility.
         
         #### 3. Technology Tooling Framework Stack Configuration
-        * **Python Engine:** Chosen for its fast data ingestion libraries, filtering speed, and ability to clean up messy text strings or empty date slots automatically.
-        * **Streamlit Framework:** Selected to build an enterprise-grade interactive web interface quickly without a massive front-end development stack. It provides responsive layouts that let field teams pin the page directly to their smartphone home screens via PWA capabilities.
-        * **Google Apps Script Engine:** Acts as the automated background task manager running inside the core data sheet. It automates 6:00 PM email summaries, filters target dates dynamically, and splits CC routing strings cleanly across regional zones.
+        * **Python Engine:** Chosen for fast data ingestion libraries, filtering speed, and automatic validation.
+        * **Streamlit Framework:** Selected to build an enterprise-grade interactive web interface quickly.
+        * **Google Apps Script Engine:** Automates background monitoring alerts inside the spreadsheet repository.
         """)
         
     with tab_glossary:
         st.markdown("### 📚 Dashboard Parameter Dictionary")
-        st.markdown("Review the definitions below to understand how the platform calculates its compliance fields:")
-        
-        glossary_matrix = [
-            {"Parameter Name": "Total Scheduled Tasks", "Calculated Definition & Formula": "Count of total rows assigned", "Operational Impact Context": "Volume baseline"},
-            {"Parameter Name": "Compliance Core Rate", "Calculated Definition & Formula": "(Attended / Total) * 100", "Operational Impact Context": "Main hub score"},
-            {"Parameter Name": "High-Risk Asset Tracker", "Calculated Definition & Formula": "Cancellations > 3.5% or Speed < 80%", "Operational Impact Context": "Flags bad behavior"},
-            {"Parameter Name": "SLA Attendance Rate", "Calculated Definition & Formula": "Vendor specific conversion %", "Operational Impact Context": "Vendor grading"}
-        ]
-        
-        # Display definitions using a structured layout
         st.markdown("""
         * **Total Scheduled Tasks:** The raw count of rider rows assigned to a specific module within the designated timeline block.
         * **Compliance Core Rate:** Calculated as `(Attended Assets / Total Scheduled Tasks) * 100`. This acts as the primary metric for regional training effectiveness.
