@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# --- 1. SYSTEM INITIALIZATION & THEME LAYER ---
+# --- 1. SYSTEM INITIALIZATION ---
 st.set_page_config(
     page_title="Talabat Training Control Hub",
     page_icon="🍊",
@@ -10,23 +10,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Brand UI optimization styles
+# Custom responsive table overrides
 st.markdown("""
     <style>
         .block-container { padding-top: 1.5rem; padding-bottom: 1.5rem; }
         div[data-testid="stMetricValue"] { font-size: 32px !important; font-weight: bold; color: rgb(232, 52, 61); }
         .stButton>button { border-radius: 6px; }
-        .sidebar .sidebar-content { background-color: #f8fafc; }
     </style>
 """, unsafe_allow_html=True)
 
 
-# --- 2. DATA ACQUISITION & PROCESSING LAYER ---
+# --- 2. DATA LOAD ENGINE ---
 @st.cache_data(ttl=1800)
 def load_comprehensive_operations_data():
-    """
-    Ingests and constructs active operations records for tracking execution metrics.
-    """
     np.random.seed(10)
     sample_size = 500
     
@@ -63,7 +59,7 @@ def load_comprehensive_operations_data():
 try:
     master_df = load_comprehensive_operations_data()
 except Exception as e:
-    st.error(f"Ingestion Fault: Connection failed to main data registry: {e}")
+    st.error(f"Data Fetch Failure: {e}")
     st.stop()
 
 
@@ -72,16 +68,16 @@ with st.sidebar:
     st.markdown("### 🍊 talabat Framework")
     st.markdown("## Navigation Hub")
     
-    # STRICT STRINGS ALIGNMENT LOCK
+    # 🚨 PURE STRINGS FOR SCRIPT NAVIGATION SAFETY 🚨
     app_view = st.radio(
         "Jump directly to operational node:",
         options=[
-            "📊 Overview", 
-            "🖥️ Main Dashboard", 
-            "📈 Performance Metrics", 
-            "🤝 Fleet Partner Analytics", 
-            "🏕️ T-Camp Hub", 
-            "📖 Glossary & Version Documentation"
+            "Overview Portal", 
+            "Main Dashboard Grid", 
+            "Performance Engine", 
+            "Fleet Partner Leaderboard", 
+            "T-Camp Hub", 
+            "Reference Documentation"
         ]
     )
     
@@ -89,14 +85,14 @@ with st.sidebar:
     
     if st.button("🔄 Clear System Cache Engine", use_container_width=True):
         st.cache_data.clear()
-        st.toast("Internal caching cleared. Synchronizing live data streams...", icon="⚡")
-        st.sidebar.success("Cache Sync Active!")
+        st.toast("Internal caching cleared...", icon="⚡")
+        st.rerun()
 
 
-# --- 4. RENDER SELECT VIEWS ---
+# --- 4. RENDER ROUTER VIEWS ---
 
-# VIEW A: OVERVIEW PIPELINE
-if app_view == "📊 Overview":
+# VIEW 1: OVERVIEW
+if app_view == "Overview Portal":
     st.title("Operations Overview Portal")
     st.caption("UAE Existing Rider Training • High-Level Performance Aggregations")
     st.divider()
@@ -110,14 +106,12 @@ if app_view == "📊 Overview":
     m_col3.metric("Global Attended Conversion Rate", f"{(t_trained/t_planned * 100):.1f}%")
     
     st.divider()
-    
     st.markdown("### 🗓️ Core Time-Variant Tracking Analytics")
     time_tab_week, time_tab_month = st.tabs(["Weekly Ingestion Analytics", "Monthly Aggregations"])
     
     with time_tab_week:
         st.markdown("#### Weekly Training Logs Matrix")
-        
-        weekly_summary = master_df.groupby(['Week_Number', 'City', 'Module']).agg(
+        weekly_summary = master_df.groupby(['Week_Number', 'City']).agg(
             Planned=('Rider ID', 'count'),
             Trained=('Status', lambda x: (x == 'Attended').sum())
         ).reset_index()
@@ -125,18 +119,11 @@ if app_view == "📊 Overview":
         target_week = st.selectbox("Select Week Window View:", options=sorted(weekly_summary['Week_Number'].unique().tolist(), reverse=True))
         week_df = weekly_summary[weekly_summary['Week_Number'] == target_week]
         
-        w_total_p = week_df['Planned'].sum()
-        w_total_t = week_df['Trained'].sum()
-        
-        st.info(f"👉 **UAE Weekly Performance Summary:** In Week {target_week}, **{w_total_p}** riders were planned and **{w_total_t}** successfully completed modules.")
-        
-        st.markdown("**City Breakdowns for the selected Week:**")
-        city_w_table = week_df.groupby('City')[['Planned', 'Trained']].sum()
-        st.dataframe(city_w_table, use_container_width=True)
+        st.info(f"👉 **UAE Weekly Performance Summary:** In Week {target_week}, **{week_df['Planned'].sum()}** riders were planned and **{week_df['Trained'].sum()}** completed modules.")
+        st.dataframe(week_df.groupby('City')[['Planned', 'Trained']].sum(), use_container_width=True)
         
     with time_tab_month:
         st.markdown("#### Monthly Macro Training Logs Matrix")
-        
         monthly_summary = master_df.groupby(['Month_Name', 'City']).agg(
             Planned=('Rider ID', 'count'),
             Trained=('Status', lambda x: (x == 'Attended').sum())
@@ -145,18 +132,12 @@ if app_view == "📊 Overview":
         target_month = st.selectbox("Select Month Window View:", options=sorted(monthly_summary['Month_Name'].unique().tolist()))
         month_df = monthly_summary[monthly_summary['Month_Name'] == target_month]
         
-        m_total_p = month_df['Planned'].sum()
-        m_total_t = month_df['Trained'].sum()
-        
-        st.info(f"👉 **UAE Monthly Performance Summary:** In {target_month}, **{m_total_p}** riders were planned and **{m_total_t}** completed their operational checkpoints.")
-        
-        st.markdown("**City Breakdowns for the selected Month:**")
-        city_m_table = month_df.groupby('City')[['Planned', 'Trained']].sum()
-        st.dataframe(city_m_table, use_container_width=True)
+        st.info(f"👉 **UAE Monthly Performance Summary:** In {target_month}, **{month_df['Planned'].sum()}** riders were planned.")
+        st.dataframe(month_df.groupby('City')[['Planned', 'Trained']].sum(), use_container_width=True)
 
 
-# VIEW B: MAIN DASHBOARD OPERATIONAL GRID
-elif app_view == "🖥️ Main Dashboard":
+# VIEW 2: MAIN DASHBOARD
+elif app_view == "Main Dashboard Grid":
     st.title("Talabat Existing Rider Training Dashboard")
     st.caption("UAE Existing Rider Training")
     st.divider()
@@ -179,7 +160,6 @@ elif app_view == "🖥️ Main Dashboard":
     col_m4.metric("Compliance Rate", f"{d_rate:.1f}%")
     
     st.divider()
-    
     st.markdown("### 📋 Active Training Ledger Rows")
     search_query = st.text_input("⚡ Quick Search (Enter Rider ID or Name Keyphrase):", placeholder="Search records...").strip()
     
@@ -190,22 +170,16 @@ elif app_view == "🖥️ Main Dashboard":
         ]
         
     if not dash_filtered_df.empty:
-        st.dataframe(
-            dash_filtered_df[['Rider ID', 'Name', 'Contract Name', 'City', 'Module', 'Planned Date', 'Status']],
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(dash_filtered_df[['Rider ID', 'Name', 'Contract Name', 'City', 'Module', 'Planned Date', 'Status']], use_container_width=True, hide_index=True)
     else:
         st.info("No records locate matching filter thresholds.")
 
 
-# VIEW C: PERFORMANCE METRICS PIPELINE
-elif app_view == "📈 Performance Metrics":
+# VIEW 3: PERFORMANCE ENGINE
+elif app_view == "Performance Engine":
     st.title("Rider Fleet Performance Engine")
     st.caption("Post-Training Operational Behavior Analytics")
     st.divider()
-    
-    st.markdown("### 📊 Rider Core Performance Indicators")
     
     perf_col1, perf_col2, perf_col3 = st.columns(3)
     perf_col1.metric("Avg Speed Compliance Score", f"{master_df['Speed_Compliance_Score'].mean():.1f}%")
@@ -213,21 +187,12 @@ elif app_view == "📈 Performance Metrics":
     perf_col3.metric("Avg Customer Service Rating", f"{master_df['Customer_Rating'].mean():.2f} ★")
     
     st.markdown("#### High-Risk Asset Review Ledger")
-    
-    high_risk_df = master_df[
-        (master_df['Order_Cancellation_Rate'] > 3.5) | 
-        (master_df['Speed_Compliance_Score'] < 80)
-    ]
-    
-    st.dataframe(
-        high_risk_df[['Rider ID', 'Name', 'Contract Name', 'City', 'Speed_Compliance_Score', 'Order_Cancellation_Rate', 'Customer_Rating']],
-        use_container_width=True,
-        hide_index=True
-    )
+    high_risk_df = master_df[(master_df['Order_Cancellation_Rate'] > 3.5) | (master_df['Speed_Compliance_Score'] < 80)]
+    st.dataframe(high_risk_df[['Rider ID', 'Name', 'Contract Name', 'City', 'Speed_Compliance_Score', 'Order_Cancellation_Rate', 'Customer_Rating']], use_container_width=True, hide_index=True)
 
 
-# VIEW D: FLEET PARTNER ANALYTICS
-elif app_view == "🤝 Fleet Partner Analytics":
+# VIEW 4: FLEET PARTNER LEADERBOARD
+elif app_view == "Fleet Partner Leaderboard":
     st.title("Fleet Partner Compliance & Rankings Ledger")
     st.caption("Vendor Ranking Framework & SLA Target Audits")
     st.divider()
@@ -235,7 +200,6 @@ elif app_view == "🤝 Fleet Partner Analytics":
     fp_metrics = master_df.groupby('Contract Name').agg(
         Total_Assigned=('Rider ID', 'count'),
         Attended_Count=('Status', lambda x: (x == 'Attended').sum()),
-        No_Show_Count=('Status', lambda x: (x == 'Not Attended').sum()),
         Avg_Speed_Score=('Speed_Compliance_Score', 'mean'),
         Avg_Customer_Score=('Customer_Rating', 'mean')
     ).reset_index()
@@ -243,63 +207,40 @@ elif app_view == "🤝 Fleet Partner Analytics":
     fp_metrics['SLA_Attendance_Rate'] = (fp_metrics['Attended_Count'] / fp_metrics['Total_Assigned']) * 100
     fp_metrics = fp_metrics.sort_values(by='SLA_Attendance_Rate', ascending=False)
     
-    st.markdown("### 🏆 Fleet Partner Leaderboard Matrix")
-    st.dataframe(
-        fp_metrics.style.format({
-            'SLA_Attendance_Rate': '{:.1f}%',
-            'Avg_Speed_Score': '{:.1f}%',
-            'Avg_Customer_Score': '{:.2f} ★'
-        }),
-        use_container_width=True,
-        hide_index=True
-    )
+    st.dataframe(fp_metrics.style.format({'SLA_Attendance_Rate': '{:.1f}%', 'Avg_Speed_Score': '{:.1f}%', 'Avg_Customer_Score': '{:.2f} ★'}), use_container_width=True, hide_index=True)
 
 
-# VIEW E: T-CAMP HUB
-elif app_view == "🏕️ T-Camp Hub":
+# VIEW 5: T-CAMP HUB
+elif app_view == "T-Camp Hub":
     st.title("T-Camp Operations Center")
     st.caption("Integrated Rider Onboarding & Accommodation Matrix Mapping")
     st.divider()
-    
     st.warning("🚧 Coming Soon: System Node Pending Pipeline Configuration")
 
 
-# VIEW F: GLOSSARY & DOCUMENTATION ARCHIVE
-elif app_view == "📖 Glossary & Version Documentation":
+# VIEW 6: GLOSSARY / DOCUMENTATION
+elif app_view == "Reference Documentation":
     st.title("Dashboard Reference Engine")
     st.caption("System Architecture Controls, Dynamic Glossary, & Version Control Logs")
     st.divider()
     
     tab_doc, tab_glossary = st.tabs(["📋 Architectural Documentation (v1.0)", "📚 Interactive Operations Glossary"])
-    
     with tab_doc:
         st.markdown("""
         ### System Architecture Specification — Version 1.0
-        
-        #### 1. Project Objective & Strategic Scope
-        This centralized intelligence platform automates tracking logs across the UAE Existing Rider Training project lifecycle.
-        
-        #### 2. Key Business Outcomes Achieved
-        * **Eliminated Reporting Lag:** Shifts operations from static weekly file processing to a reactive web view updated automatically.
-        * **Unified Vendor Accountability:** Built-in tracking lists isolate low-performing partners instantly for immediate SLA audits.
-        
-        #### 3. Technology Tooling Framework Stack Configuration
-        * **Python Engine:** Chosen for fast data ingestion libraries, filtering speed, and automatic validation.
-        * **Streamlit Framework:** Selected to build an enterprise-grade interactive web interface quickly.
-        * **Google Apps Script Engine:** Automates background monitoring alerts inside the spreadsheet repository.
+        * **Python Engine:** Ingests libraries and cleans up raw matrices natively.
+        * **Streamlit Framework:** Provides an enterprise interface capable of full-screen PWA pinning on field mobile devices.
+        * **Google Apps Script Engine:** Processes target daily records to trigger 6:00 PM partner escalation alerts.
         """)
-        
     with tab_glossary:
-        st.markdown("### 📚 Dashboard Parameter Dictionary")
         st.markdown("""
-        * **Total Scheduled Tasks:** The raw count of rider rows assigned to a specific module within the designated timeline block.
-        * **Compliance Core Rate:** Calculated as `(Attended Assets / Total Scheduled Tasks) * 100`. This acts as the primary metric for regional training effectiveness.
-        * **High-Risk Asset Tracker:** Flags any active rider asset falling below an 80% Speed Compliance Score or exceeding a 3.5% Order Cancellation benchmark.
-        * **SLA Attendance Rate:** The vendor compliance score used by management during quarterly contract reviews to grade Fleet Partner accountability.
+        * **Total Scheduled Tasks:** Raw count of assigned records.
+        * **Compliance Core Rate:** `(Attended Assets / Total Scheduled Tasks) * 100`.
+        * **High-Risk Asset Tracker:** Flags records with Cancellations > 3.5% or Safety Scores < 80%.
         """)
 
 
-# --- 5. COMPLIANCE CONTROL ENGINE FOOTER ---
+# --- 5. FOOTER CONTROL ---
 st.markdown("""
     <div style="text-align: center; margin-top: 55px; padding: 15px; border-top: 1px solid #eeeeee;">
         <p style="font-size: 11px; color: #94a3b8; font-family: sans-serif; margin: 0;">
