@@ -61,9 +61,11 @@ def load_comprehensive_operations_data():
     df['Planned Date'] = df['Timestamp'].dt.strftime('%d-%m-%Y')
     df['Contract Name'] = df['Contract Name'].fillna("Not Documented").astype(str)
     
-    df['Date'] = df['Timestamp'].dt.date
-    df['Week'] = df['Timestamp'].dt.to_period('W').dt.start_time
-    df['Month'] = df['Timestamp'].dt.to_period('M').dt.start_time
+    # Standard formats to ensure chart compatibility across all pandas versions
+    df['Date_Str'] = df['Timestamp'].dt.strftime('%Y-%m-%d')
+    df['Week_Str'] = df['Timestamp'].dt.strftime('Week %U (%Y)')
+    df['Month_Str'] = df['Timestamp'].dt.strftime('%B %Y')
+    df['Pure_Date'] = df['Timestamp'].dt.date
     
     df['Speed_Compliance_Score'] = np.random.randint(75, 100, size=sample_size)
     df['Order_Cancellation_Rate'] = np.random.uniform(0.5, 4.5, size=sample_size)
@@ -83,7 +85,6 @@ with st.sidebar:
     st.markdown("### 🍊 talabat Framework")
     st.markdown("## Navigation Hub")
     
-    # Strictly aligned selection routes
     app_view = st.radio(
         "Jump directly to operational node:",
         options=[
@@ -99,8 +100,8 @@ with st.sidebar:
     st.divider()
     
     st.markdown("### 📅 Global Time Boundary Filter")
-    min_date = master_df['Date'].min()
-    max_date = master_df['Date'].max()
+    min_date = master_df['Pure_Date'].min()
+    max_date = master_df['Pure_Date'].max()
     
     selected_date_range = st.date_input(
         "Select Target Window:",
@@ -109,12 +110,11 @@ with st.sidebar:
         max_value=max_date
     )
     
-    # 🚨 FIX: DEFENSIVE UNPACKING GUARD FOR TWO-DATE VALUES 🚨
+    # Check that range includes both a start and an end point cleanly
     if isinstance(selected_date_range, (list, tuple)) and len(selected_date_range) == 2:
         start_date, end_date = selected_date_range
-        time_filtered_df = master_df[(master_df['Date'] >= start_date) & (master_df['Date'] <= end_date)]
+        time_filtered_df = master_df[(master_df['Pure_Date'] >= start_date) & (master_df['Pure_Date'] <= end_date)]
     else:
-        # Fallback to display everything if selection window is processing/incomplete
         time_filtered_df = master_df
 
     st.divider()
@@ -154,16 +154,17 @@ if app_view == "Overview Portal":
     chart_type = st.selectbox("Select Visual Display Style:", ["Area Chart View", "Bar Chart View"])
     
     if time_frame == "Daily Logs":
-        trend_data = time_filtered_df.groupby('Date').size().reset_index(name='Riders Planned').set_index('Date')
+        trend_data = time_filtered_df.groupby('Date_Str').size().reset_index(name='Riders Planned').set_index('Date_Str')
     elif time_frame == "Weekly Logs":
-        trend_data = time_filtered_df.groupby('Week').size().reset_index(name='Riders Planned').set_index('Week')
+        trend_data = time_filtered_df.groupby('Week_Str').size().reset_index(name='Riders Planned').set_index('Week_Str')
     else:
-        trend_data = time_filtered_df.groupby('Month').size().reset_index(name='Riders Planned').set_index('Month')
+        trend_data = time_filtered_df.groupby('Month_Str').size().reset_index(name='Riders Planned').set_index('Month_Str')
         
+    # REMOVED color argument to ensure complete backward/forward version compatibility
     if chart_type == "Area Chart View":
-        st.area_chart(trend_data, color="#e8343d")
+        st.area_chart(trend_data)
     else:
-        st.bar_chart(trend_data, color="#475569")
+        st.bar_chart(trend_data)
         
     st.markdown("#### Hub Breakdown Summary")
     st.dataframe(time_filtered_df.groupby('City')[['Rider ID']].count().rename(columns={'Rider ID': 'Riders Planned'}), use_container_width=True)
