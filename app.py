@@ -72,6 +72,7 @@ with st.sidebar:
     st.markdown("### 🍊 talabat Framework")
     st.markdown("## Navigation Hub")
     
+    # STRICT STRINGS ALIGNMENT LOCK
     app_view = st.radio(
         "Jump directly to operational node:",
         options=[
