@@ -3,311 +3,430 @@ import pandas as pd
 import numpy as np
 import datetime
 
-# --- 1. SYSTEM INITIALIZATION & THEME LAYER ---
 st.set_page_config(
-    page_title="Talabat Training Control Hub",
+    page_title="Talabat Training Hub",
     page_icon="🍊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 st.markdown("""
-    <style>
-        .block-container { padding-top: 1.5rem; padding-bottom: 1.5rem; }
-        .metric-card {
-            background-color: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            text-align: left;
-        }
-        .metric-label { font-size: 14px; color: #64748b; font-weight: 500; }
-        .metric-value { font-size: 30px; font-weight: 700; color: #0f172a; margin: 4px 0; }
-        .metric-delta { font-size: 13px; font-weight: 600; }
-        .delta-positive { color: #10b981; }
-        .delta-negative { color: #ef4444; }
-    </style>
+<style>
+  .block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
+
+  .kpi-card {
+    background: #ffffff;
+    border: 1px solid #f0f0ee;
+    border-radius: 12px;
+    padding: 20px 22px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .kpi-card.orange::before { background: #FF6B35; }
+  .kpi-card.green::before  { background: #10b981; }
+  .kpi-card.red::before    { background: #ef4444; }
+  .kpi-card.blue::before   { background: #3b82f6; }
+  .kpi-card.purple::before { background: #8b5cf6; }
+
+  .kpi-label { font-size: 12px; color: #94a3b8; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .kpi-value { font-size: 34px; font-weight: 700; color: #0f172a; line-height: 1; margin-bottom: 6px; }
+  .kpi-sub   { font-size: 12px; color: #64748b; }
+  .kpi-pos   { color: #10b981; font-weight: 600; }
+  .kpi-neg   { color: #ef4444; font-weight: 600; }
+
+  .city-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+  }
+  .city-name { font-size: 14px; font-weight: 500; color: #1e293b; min-width: 90px; }
+  .city-bar-wrap { flex: 1; background: #f1f5f9; border-radius: 999px; height: 8px; overflow: hidden; }
+  .city-bar { height: 8px; border-radius: 999px; background: #FF6B35; }
+  .city-pct  { font-size: 13px; font-weight: 600; color: #FF6B35; min-width: 44px; text-align: right; }
+  .city-count { font-size: 12px; color: #94a3b8; min-width: 60px; text-align: right; }
+
+  .status-pill {
+    display: inline-block; font-size: 12px; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .pill-attended   { background: #d1fae5; color: #065f46; }
+  .pill-nshow      { background: #fee2e2; color: #991b1b; }
+  .pill-rescheduled{ background: #fef3c7; color: #92400e; }
+
+  .section-head { font-size: 13px; font-weight: 700; color: #94a3b8; letter-spacing: 0.08em; text-transform: uppercase; margin: 1.6rem 0 0.8rem; }
+
+  [data-testid="stMetricValue"] { font-size: 28px !important; }
+</style>
 """, unsafe_allow_html=True)
 
 
-# --- 2. DATA ACQUISITION & PROCESSING ENGINE ---
+# ── DATA ──────────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=1800)
-def load_comprehensive_operations_data():
+def load_data():
     np.random.seed(42)
-    sample_size = 600
+    n = 600
+    partners = ["Vendor A Logistics", "Vendor B UAE", "Speedy Delivery LLC", "Al Ain Fleet Pros", "Direct Delivery Corp"]
+    modules  = ["Road Safety Compliance", "Customer Experience", "App Performance & Flow"]
+    cities   = ["Dubai", "Abu Dhabi", "Al Ain", "Sharjah", "Ajman", "RAK", "Fujairah"]
+    statuses = ["Attended", "Not Attended", "Rescheduled"]
 
-    mock_partners = ["Vendor A Logistics", "Vendor B UAE", "Speedy Delivery LLC", "Al Ain Fleet Pros", "Direct Delivery Corp"]
-    mock_modules = ["Road Safety Compliance Deck", "Customer Experience Optimization", "App Performance & Flow"]
-    mock_cities = ["Dubai", "Abu Dhabi", "Al Ain", "Sharjah", "Ajman", "RAK", "Fujairah"]
-    mock_statuses = ["Attended", "Not Attended", "Rescheduled"]
-
-    base_date = pd.Timestamp('2026-07-12')
-    date_pool = [base_date - pd.Timedelta(days=int(d)) for d in np.random.randint(0, 90, size=sample_size)]
+    base = pd.Timestamp('2026-07-12')
+    dates = [base - pd.Timedelta(days=int(d)) for d in np.random.randint(0, 90, size=n)]
 
     df = pd.DataFrame({
-        'Rider ID': np.random.randint(100000, 999999, size=sample_size),
-        'Name': [f"Rider Asset {i}" for i in range(1, sample_size + 1)],
-        'Contract Name': np.random.choice(mock_partners, size=sample_size),
-        'City': np.random.choice(mock_cities, size=sample_size),
-        'Module': np.random.choice(mock_modules, size=sample_size),
-        'Timestamp': pd.to_datetime(date_pool),
-        'Status': np.random.choice(mock_statuses, size=sample_size, p=[0.75, 0.18, 0.07])
+        'Rider ID':       np.random.randint(100000, 999999, size=n).astype(str),
+        'Name':           [f"Rider {i:04d}" for i in range(1, n+1)],
+        'Contract Name':  np.random.choice(partners, size=n),
+        'City':           np.random.choice(cities, size=n),
+        'Module':         np.random.choice(modules, size=n),
+        'Timestamp':      pd.to_datetime(dates),
+        'Status':         np.random.choice(statuses, size=n, p=[0.75, 0.18, 0.07]),
     })
 
-    df['Rider ID'] = df['Rider ID'].astype(str)
-    df['Planned Date'] = df['Timestamp'].dt.strftime('%d-%m-%Y')
-    df['Contract Name'] = df['Contract Name'].fillna("Not Documented").astype(str)
+    df['Planned Date']  = df['Timestamp'].dt.strftime('%d-%m-%Y')
+    df['Contract Name'] = df['Contract Name'].fillna("Unknown").astype(str)
 
-    # FIX #1: Use sortable string keys for chart grouping (YYYY-MM-DD, not Month Name)
-    # This prevents alphabetical mis-ordering on trend charts (April before May, etc.)
-    df['Date_Str'] = df['Timestamp'].dt.strftime('%Y-%m-%d')
-    df['Week_Str'] = df['Timestamp'].dt.strftime('%Y-W%U')        # was "Week %U (%Y)" — sorted wrong
-    df['Month_Str'] = df['Timestamp'].dt.strftime('%Y-%m')        # was "%B %Y" — sorted alphabetically
-    df['Pure_Date'] = df['Timestamp'].dt.date                     # returns datetime.date, safe for st.date_input
+    # ── FIX: ISO-sortable keys so charts render chronologically ──────────────
+    df['Date_Str']  = df['Timestamp'].dt.strftime('%Y-%m-%d')   # daily
+    df['Week_Str']  = df['Timestamp'].dt.strftime('%Y-W%U')     # weekly  (was "Week %U (%Y)" → alpha-sorted wrong)
+    df['Month_Str'] = df['Timestamp'].dt.strftime('%Y-%m')      # monthly (was "%B %Y" → alpha-sorted wrong = CRASH)
+    df['Pure_Date'] = df['Timestamp'].dt.date
 
-    df['Speed_Compliance_Score'] = np.random.randint(75, 100, size=sample_size)
-    df['Order_Cancellation_Rate'] = np.random.uniform(0.5, 4.5, size=sample_size)
-    df['Customer_Rating'] = np.random.uniform(4.2, 5.0, size=sample_size)
-
+    df['Speed_Score']  = np.random.randint(75, 100, size=n).astype(float)
+    df['Cancel_Rate']  = np.random.uniform(0.5, 4.5, size=n)
+    df['Rating']       = np.random.uniform(4.2, 5.0, size=n)
     return df
 
 try:
-    master_df = load_comprehensive_operations_data()
+    master_df = load_data()
 except Exception as e:
-    st.error(f"Data Fetch Failure: {e}")
+    st.error(f"Data load failed: {e}")
     st.stop()
 
 
-# --- 3. SIDEBAR NAVIGATION CONTEXT ---
+# ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### 🍊 talabat Framework")
-    st.markdown("## Navigation Hub")
-
-    app_view = st.radio(
-        "Jump directly to operational node:",
-        options=[
-            "Overview Portal",
-            "Main Dashboard Grid",
-            "Performance Engine",
-            "Fleet Partner Leaderboard",
-            "T-Camp Hub",
-            "Reference Documentation"
-        ]
-    )
-
+    st.markdown("### 🍊 talabat")
+    st.markdown("#### Training Control Hub")
+    st.caption("UAE Fleet Operations")
     st.divider()
 
-    st.markdown("### 📅 Global Time Boundary Filter")
-    min_date = master_df['Pure_Date'].min()
-    max_date = master_df['Pure_Date'].max()
+    view = st.radio("View", [
+        "📊  Overview",
+        "📋  Training Ledger",
+        "🏙️  City Analytics",
+        "⚡  Performance",
+        "🏆  Partner Rankings",
+        "🏕️  T-Camp",
+        "📖  Docs",
+    ], label_visibility="collapsed")
 
-    # FIX #2: Explicitly cast to datetime.date to guarantee type compatibility
-    # across all pandas versions. Avoids TypeError on Streamlit Cloud if pandas
-    # returns a numpy scalar instead of a plain Python date.
-    min_date = datetime.date(min_date.year, min_date.month, min_date.day)
-    max_date = datetime.date(max_date.year, max_date.month, max_date.day)
+    st.divider()
+    st.markdown("**Date range**")
+    raw_min = master_df['Pure_Date'].min()
+    raw_max = master_df['Pure_Date'].max()
+    min_d = datetime.date(raw_min.year, raw_min.month, raw_min.day)
+    max_d = datetime.date(raw_max.year, raw_max.month, raw_max.day)
 
-    selected_date_range = st.date_input(
-        "Select Target Window:",
-        value=[min_date, max_date],
-        min_value=min_date,
-        max_value=max_date
-    )
-
-    # FIX #3: Robust guard against partial date selection (user clicks only one date)
-    if isinstance(selected_date_range, (list, tuple)) and len(selected_date_range) == 2:
-        start_date, end_date = selected_date_range
-        time_filtered_df = master_df[
-            (master_df['Pure_Date'] >= start_date) &
-            (master_df['Pure_Date'] <= end_date)
-        ]
+    dr = st.date_input("Window", value=[min_d, max_d], min_value=min_d, max_value=max_d, label_visibility="collapsed")
+    if isinstance(dr, (list, tuple)) and len(dr) == 2:
+        s, e = dr
+        fdf = master_df[(master_df['Pure_Date'] >= s) & (master_df['Pure_Date'] <= e)]
     else:
-        # Single date selected — show only that day's data (or fall back to full)
-        time_filtered_df = master_df
+        fdf = master_df
 
     st.divider()
-
-    if st.button("🔄 Clear System Cache Engine", use_container_width=True):
+    st.caption(f"{len(fdf):,} records in window")
+    if st.button("🔄 Refresh cache", use_container_width=True):
         st.cache_data.clear()
-        st.toast("Internal caching cleared...", icon="⚡")   # requires streamlit >= 1.22
-        st.rerun()                                            # requires streamlit >= 1.27
+        st.toast("Cache cleared", icon="⚡")
+        st.rerun()
 
 
-# --- 4. RENDER ROUTER VIEWS ---
+# ── HELPERS ───────────────────────────────────────────────────────────────────
+def kpi(col, label, value, sub="", color="orange"):
+    with col:
+        st.markdown(f"""
+        <div class="kpi-card {color}">
+          <div class="kpi-label">{label}</div>
+          <div class="kpi-value">{value}</div>
+          <div class="kpi-sub">{sub}</div>
+        </div>""", unsafe_allow_html=True)
 
-# VIEW 1: OVERVIEW PORTAL
-if app_view == "Overview Portal":
-    st.title("Operations Overview Portal")
-    st.caption("UAE Existing Rider Training • Time-Variant Analytics Summary")
-    st.divider()
+def status_pill(s):
+    if s == "Attended":    return f'<span class="status-pill pill-attended">Attended</span>'
+    if s == "Not Attended":return f'<span class="status-pill pill-nshow">No-show</span>'
+    return f'<span class="status-pill pill-rescheduled">Rescheduled</span>'
 
-    total_planned = len(time_filtered_df)
-    total_trained = len(time_filtered_df[time_filtered_df['Status'] == 'Attended'])
-    total_no_shows = len(time_filtered_df[time_filtered_df['Status'] == 'Not Attended'])
-    conv_rate = (total_trained / total_planned * 100) if total_planned > 0 else 0.0
+
+# ══════════════════════════════════════════════════════════════════════════════
+# VIEW 1 — OVERVIEW  (the beautiful one)
+# ══════════════════════════════════════════════════════════════════════════════
+if "Overview" in view:
+    st.markdown("## Operations Overview")
+    st.caption("UAE Existing Rider Training · real-time compliance snapshot")
+
+    total   = len(fdf)
+    trained = (fdf['Status'] == 'Attended').sum()
+    noshows = (fdf['Status'] == 'Not Attended').sum()
+    resched = (fdf['Status'] == 'Rescheduled').sum()
+    rate    = trained / total * 100 if total else 0
+    cities_active = fdf['City'].nunique()
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    kpi(c1, "Scheduled",     f"{total:,}",          "total pipeline",          "orange")
+    kpi(c2, "Trained",       f"{trained:,}",         "assets verified",         "green")
+    kpi(c3, "No-shows",      f"{noshows:,}",         "action required",         "red")
+    kpi(c4, "Compliance",    f"{rate:.1f}%",         "attendance rate",         "blue")
+    kpi(c5, "Active cities", f"{cities_active}",     "hubs in window",          "purple")
+
+    st.markdown('<div class="section-head">Trend</div>', unsafe_allow_html=True)
+    tf = st.radio("Group by", ["Daily", "Weekly", "Monthly"], horizontal=True, key="ov_tf")
+    ct = st.radio("Chart", ["Area", "Bar"], horizontal=True, key="ov_ct")
+
+    key = {'Daily': 'Date_Str', 'Weekly': 'Week_Str', 'Monthly': 'Month_Str'}[tf]
+    # Sort by key to guarantee chronological order (ISO keys sort correctly)
+    trend = (fdf.groupby(key)
+               .size()
+               .reset_index(name='Riders Planned')
+               .sort_values(key)          # ← explicit sort: fixes monthly crash
+               .set_index(key))
+
+    if ct == "Area":
+        st.area_chart(trend, color="#FF6B35")
+    else:
+        st.bar_chart(trend, color="#FF6B35")
+
+    st.markdown('<div class="section-head">Status breakdown</div>', unsafe_allow_html=True)
+    col_a, col_b = st.columns([1, 1])
+
+    with col_a:
+        status_counts = fdf['Status'].value_counts()
+        st.bar_chart(status_counts, color="#FF6B35")
+
+    with col_b:
+        st.markdown('<div class="section-head">City snapshot</div>', unsafe_allow_html=True)
+        city_df = (fdf.groupby('City')
+                      .agg(Total=('Status','count'),
+                           Attended=('Status', lambda x: (x=='Attended').sum()))
+                      .reset_index())
+        city_df['Rate'] = (city_df['Attended'] / city_df['Total'] * 100).round(1)
+        city_df = city_df.sort_values('Total', ascending=False)
+        max_total = city_df['Total'].max()
+
+        rows = ""
+        for _, r in city_df.iterrows():
+            bar_w = r['Total'] / max_total * 100
+            rows += f"""
+            <div class="city-row">
+              <span class="city-name">{r['City']}</span>
+              <div class="city-bar-wrap"><div class="city-bar" style="width:{bar_w:.0f}%"></div></div>
+              <span class="city-pct">{r['Rate']}%</span>
+              <span class="city-count">{int(r['Total'])} riders</span>
+            </div>"""
+        st.markdown(rows, unsafe_allow_html=True)
+
+    st.markdown('<div class="section-head">Module distribution</div>', unsafe_allow_html=True)
+    module_df = fdf['Module'].value_counts().reset_index()
+    module_df.columns = ['Module', 'Count']
+    st.dataframe(module_df, use_container_width=True, hide_index=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# VIEW 2 — TRAINING LEDGER
+# ══════════════════════════════════════════════════════════════════════════════
+elif "Ledger" in view:
+    st.markdown("## Training Ledger")
+    st.caption("Full attendance records with search & fleet-partner filter")
+
+    fps = sorted(fdf['Contract Name'].unique().tolist())
+    sel_fps = st.multiselect("Fleet partner", options=fps, default=fps)
+    ldf = fdf[fdf['Contract Name'].isin(sel_fps)]
+
+    d_tot = len(ldf)
+    d_att = (ldf['Status'] == 'Attended').sum()
+    d_ns  = (ldf['Status'] == 'Not Attended').sum()
+    d_rt  = d_att / d_tot * 100 if d_tot else 0
 
     c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Total Scheduled</div><div class="metric-value">{total_planned:,}</div><div class="metric-delta delta-positive">▲ Base Pipeline</div></div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Total Trained</div><div class="metric-value">{total_trained:,}</div><div class="metric-delta delta-positive">▲ Assets Verified</div></div>', unsafe_allow_html=True)
-    with c3:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Logged No-Shows</div><div class="metric-value">{total_no_shows:,}</div><div class="metric-delta delta-negative">▼ Action Required</div></div>', unsafe_allow_html=True)
-    with c4:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Conversion Rate</div><div class="metric-value">{conv_rate:.1f}%</div><div class="metric-delta delta-positive">📊 Target Alignment</div></div>', unsafe_allow_html=True)
+    kpi(c1, "Scheduled",  f"{d_tot:,}",   "", "orange")
+    kpi(c2, "Attended",   f"{d_att:,}",   "", "green")
+    kpi(c3, "No-shows",   f"{d_ns:,}",    "", "red")
+    kpi(c4, "Compliance", f"{d_rt:.1f}%", "", "blue")
 
-    st.divider()
+    st.markdown('<div class="section-head">Records</div>', unsafe_allow_html=True)
+    q = st.text_input("Search rider ID or name", placeholder="e.g. 482391 or Rider 0042").strip()
+    if q:
+        ldf = ldf[ldf['Rider ID'].str.contains(q, case=False) | ldf['Name'].str.contains(q, case=False)]
 
-    st.markdown("### 📉 Operational Chrono-Trends")
-    time_frame = st.radio("Group Trend Visualizations By:", ["Daily Logs", "Weekly Logs", "Monthly Logs"], horizontal=True)
-    chart_type = st.selectbox("Select Visual Display Style:", ["Area Chart View", "Bar Chart View"])
-
-    # FIX #4: All groupby keys now use sortable ISO formats so charts render
-    # in chronological order, not alphabetical (the original Month_Str bug).
-    if time_frame == "Daily Logs":
-        trend_data = time_filtered_df.groupby('Date_Str').size().reset_index(name='Riders Planned').set_index('Date_Str')
-    elif time_frame == "Weekly Logs":
-        trend_data = time_filtered_df.groupby('Week_Str').size().reset_index(name='Riders Planned').set_index('Week_Str')
+    if ldf.empty:
+        st.info("No records match current filters.")
     else:
-        trend_data = time_filtered_df.groupby('Month_Str').size().reset_index(name='Riders Planned').set_index('Month_Str')
-
-    if chart_type == "Area Chart View":
-        st.area_chart(trend_data)
-    else:
-        st.bar_chart(trend_data)
-
-    st.markdown("#### Hub Breakdown Summary")
-    st.dataframe(time_filtered_df.groupby('City')[['Rider ID']].count().rename(columns={'Rider ID': 'Riders Planned'}), use_container_width=True)
+        show = ldf[['Rider ID', 'Name', 'Contract Name', 'City', 'Module', 'Planned Date', 'Status']].copy()
+        st.dataframe(show, use_container_width=True, hide_index=True)
 
 
-# VIEW 2: MAIN DASHBOARD GRID
-elif app_view == "Main Dashboard Grid":
-    st.title("Talabat Existing Rider Training Dashboard")
-    st.caption("UAE Existing Rider Training")
-    st.divider()
+# ══════════════════════════════════════════════════════════════════════════════
+# VIEW 3 — CITY ANALYTICS  (new)
+# ══════════════════════════════════════════════════════════════════════════════
+elif "City" in view:
+    st.markdown("## City Analytics")
+    st.caption("Hub-level compliance, attendance trends, and module breakdown by city")
 
-    st.markdown("### 🔍 Delivery Company Focus")
-    available_fps = sorted(time_filtered_df['Contract Name'].unique().tolist())
-    selected_fps = st.multiselect("Filter by Delivery Company (Fleet Partner):", options=available_fps, default=available_fps)
+    all_cities = sorted(fdf['City'].unique().tolist())
+    sel_city   = st.selectbox("Select city to drill into", ["All cities"] + all_cities)
 
-    dash_filtered_df = time_filtered_df[time_filtered_df['Contract Name'].isin(selected_fps)]
+    cdf = fdf if sel_city == "All cities" else fdf[fdf['City'] == sel_city]
 
-    d_total = len(dash_filtered_df)
-    d_attended = len(dash_filtered_df[dash_filtered_df['Status'] == 'Attended'])
-    d_no_show = len(dash_filtered_df[dash_filtered_df['Status'] == 'Not Attended'])
-    d_rate = (d_attended / d_total * 100) if d_total > 0 else 0.0
+    c_total   = len(cdf)
+    c_att     = (cdf['Status'] == 'Attended').sum()
+    c_ns      = (cdf['Status'] == 'Not Attended').sum()
+    c_rate    = c_att / c_total * 100 if c_total else 0
 
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    with col_m1:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Scheduled Tasks</div><div class="metric-value">{d_total:,}</div></div>', unsafe_allow_html=True)
-    with col_m2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Attended Assets</div><div class="metric-value">{d_attended:,}</div></div>', unsafe_allow_html=True)
-    with col_m3:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Logged No-Shows</div><div class="metric-value">{d_no_show:,}</div></div>', unsafe_allow_html=True)
-    with col_m4:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Compliance Rate</div><div class="metric-value">{d_rate:.1f}%</div></div>', unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    kpi(c1, "Scheduled",  f"{c_total:,}",  "", "orange")
+    kpi(c2, "Attended",   f"{c_att:,}",    "", "green")
+    kpi(c3, "No-shows",   f"{c_ns:,}",     "", "red")
+    kpi(c4, "Compliance", f"{c_rate:.1f}%","", "blue")
 
-    st.divider()
-    st.markdown("### 📋 Active Training Ledger Rows")
-    search_query = st.text_input("⚡ Quick Search (Enter Rider ID or Name Keyphrase):", placeholder="Search records...").strip()
+    st.markdown('<div class="section-head">City comparison</div>', unsafe_allow_html=True)
+    city_summary = (fdf.groupby('City')
+                       .agg(Total=('Status','count'),
+                            Attended=('Status', lambda x: (x=='Attended').sum()),
+                            No_shows=('Status', lambda x: (x=='Not Attended').sum()))
+                       .reset_index())
+    city_summary['Rate_%'] = (city_summary['Attended'] / city_summary['Total'] * 100).round(1)
+    city_summary = city_summary.sort_values('Rate_%', ascending=False)
 
-    if search_query:
-        dash_filtered_df = dash_filtered_df[
-            (dash_filtered_df['Rider ID'].str.contains(search_query, case=False)) |
-            (dash_filtered_df['Name'].str.contains(search_query, case=False))
-        ]
+    max_t = city_summary['Total'].max()
+    rows = ""
+    for _, r in city_summary.iterrows():
+        highlight = "font-weight:700;" if r['City'] == sel_city else ""
+        bar_w = r['Total'] / max_t * 100
+        rate_color = "#10b981" if r['Rate_%'] >= 75 else "#f59e0b" if r['Rate_%'] >= 65 else "#ef4444"
+        rows += f"""
+        <div class="city-row" style="{highlight}">
+          <span class="city-name" style="{highlight}">{r['City']}</span>
+          <div class="city-bar-wrap"><div class="city-bar" style="width:{bar_w:.0f}%;background:{rate_color}"></div></div>
+          <span class="city-pct" style="color:{rate_color}">{r['Rate_%']}%</span>
+          <span class="city-count">{int(r['Attended'])}/{int(r['Total'])}</span>
+        </div>"""
+    st.markdown(rows, unsafe_allow_html=True)
 
-    if not dash_filtered_df.empty:
-        st.dataframe(dash_filtered_df[['Rider ID', 'Name', 'Contract Name', 'City', 'Module', 'Planned Date', 'Status']], use_container_width=True, hide_index=True)
-    else:
-        st.info("No records locate matching filter thresholds.")
+    st.markdown('<div class="section-head">Attendance trend for selected city</div>', unsafe_allow_html=True)
+    tf2 = st.radio("Group by", ["Daily", "Weekly", "Monthly"], horizontal=True, key="city_tf")
+    key2 = {'Daily': 'Date_Str', 'Weekly': 'Week_Str', 'Monthly': 'Month_Str'}[tf2]
+    trend2 = (cdf.groupby(key2).size()
+                 .reset_index(name='Riders Planned')
+                 .sort_values(key2)
+                 .set_index(key2))
+    st.area_chart(trend2, color="#FF6B35")
+
+    st.markdown('<div class="section-head">Module split by city</div>', unsafe_allow_html=True)
+    mod_city = (fdf.groupby(['City', 'Module'])
+                   .size()
+                   .reset_index(name='Count')
+                   .pivot(index='City', columns='Module', values='Count')
+                   .fillna(0)
+                   .astype(int))
+    st.dataframe(mod_city, use_container_width=True)
+
+    st.markdown('<div class="section-head">Rider records for this city</div>', unsafe_allow_html=True)
+    st.dataframe(cdf[['Rider ID', 'Name', 'Contract Name', 'Module', 'Planned Date', 'Status']],
+                 use_container_width=True, hide_index=True)
 
 
-# VIEW 3: PERFORMANCE ENGINE
-elif app_view == "Performance Engine":
-    st.title("Rider Fleet Performance Engine")
-    st.caption("Post-Training Operational Behavior Analytics")
-    st.divider()
+# ══════════════════════════════════════════════════════════════════════════════
+# VIEW 4 — PERFORMANCE ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
+elif "Performance" in view:
+    st.markdown("## Fleet Performance Engine")
+    st.caption("Post-training operational behaviour analytics")
 
-    perf_col1, perf_col2, perf_col3 = st.columns(3)
-    with perf_col1:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Avg Speed Compliance</div><div class="metric-value">{time_filtered_df["Speed_Compliance_Score"].mean():.1f}%</div></div>', unsafe_allow_html=True)
-    with perf_col2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Avg Cancellation Rate</div><div class="metric-value">{time_filtered_df["Order_Cancellation_Rate"].mean():.2f}%</div></div>', unsafe_allow_html=True)
-    with perf_col3:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Avg Customer Rating</div><div class="metric-value">{time_filtered_df["Customer_Rating"].mean():.2f} ★</div></div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    kpi(c1, "Avg speed compliance", f"{fdf['Speed_Score'].mean():.1f}%",  "", "green")
+    kpi(c2, "Avg cancellation rate",f"{fdf['Cancel_Rate'].mean():.2f}%",  "", "red")
+    kpi(c3, "Avg customer rating",  f"{fdf['Rating'].mean():.2f} ★",       "", "blue")
 
-    st.markdown("#### High-Risk Asset Review Ledger")
-    high_risk_df = time_filtered_df[
-        (time_filtered_df['Order_Cancellation_Rate'] > 3.5) |
-        (time_filtered_df['Speed_Compliance_Score'] < 80)
-    ]
-    st.dataframe(high_risk_df[['Rider ID', 'Name', 'Contract Name', 'City', 'Speed_Compliance_Score', 'Order_Cancellation_Rate', 'Customer_Rating']], use_container_width=True, hide_index=True)
+    st.markdown('<div class="section-head">High-risk riders</div>', unsafe_allow_html=True)
+    hr = fdf[(fdf['Cancel_Rate'] > 3.5) | (fdf['Speed_Score'] < 80)]
+    st.caption(f"{len(hr)} riders flagged")
+    st.dataframe(hr[['Rider ID', 'Name', 'Contract Name', 'City', 'Speed_Score', 'Cancel_Rate', 'Rating']],
+                 use_container_width=True, hide_index=True)
+
+    st.markdown('<div class="section-head">Speed compliance by city</div>', unsafe_allow_html=True)
+    speed_city = fdf.groupby('City')['Speed_Score'].mean().sort_values(ascending=False).reset_index()
+    speed_city.columns = ['City', 'Avg Speed Score']
+    st.bar_chart(speed_city.set_index('City'), color="#10b981")
 
 
-# VIEW 4: FLEET PARTNER LEADERBOARD
-elif app_view == "Fleet Partner Leaderboard":
-    st.title("Fleet Partner Compliance & Rankings Ledger")
-    st.caption("Vendor Ranking Framework & SLA Target Audits")
-    st.divider()
+# ══════════════════════════════════════════════════════════════════════════════
+# VIEW 5 — PARTNER RANKINGS
+# ══════════════════════════════════════════════════════════════════════════════
+elif "Partner" in view:
+    st.markdown("## Fleet Partner Rankings")
+    st.caption("SLA compliance and vendor performance leaderboard")
 
-    fp_metrics = time_filtered_df.groupby('Contract Name').agg(
-        Total_Assigned=('Rider ID', 'count'),
-        Attended_Count=('Status', lambda x: (x == 'Attended').sum()),
-        Avg_Speed_Score=('Speed_Compliance_Score', 'mean'),
-        Avg_Customer_Score=('Customer_Rating', 'mean')
-    ).reset_index()
-
-    fp_metrics['SLA_Attendance_Rate'] = (fp_metrics['Attended_Count'] / fp_metrics['Total_Assigned']) * 100
-    fp_metrics = fp_metrics.sort_values(by='SLA_Attendance_Rate', ascending=False)
+    fp = (fdf.groupby('Contract Name')
+             .agg(Total=('Rider ID','count'),
+                  Attended=('Status', lambda x: (x=='Attended').sum()),
+                  Avg_Speed=('Speed_Score','mean'),
+                  Avg_Rating=('Rating','mean'))
+             .reset_index())
+    fp['SLA_%'] = (fp['Attended'] / fp['Total'] * 100).round(1)
+    fp = fp.sort_values('SLA_%', ascending=False).reset_index(drop=True)
+    fp.index += 1
 
     st.dataframe(
-        fp_metrics.style.format({
-            'SLA_Attendance_Rate': '{:.1f}%',
-            'Avg_Speed_Score': '{:.1f}%',
-            'Avg_Customer_Score': '{:.2f} ★'
-        }),
-        use_container_width=True,
-        hide_index=True
+        fp.style.format({'SLA_%': '{:.1f}%', 'Avg_Speed': '{:.1f}%', 'Avg_Rating': '{:.2f} ★'}),
+        use_container_width=True
     )
 
-
-# VIEW 5: T-CAMP HUB
-elif app_view == "T-Camp Hub":
-    st.title("T-Camp Operations Center")
-    st.caption("Integrated Rider Onboarding & Accommodation Matrix Mapping")
-    st.divider()
-    st.warning("🚧 Coming Soon: System Node Pending Pipeline Configuration")
+    st.markdown('<div class="section-head">SLA rate by partner</div>', unsafe_allow_html=True)
+    st.bar_chart(fp.set_index('Contract Name')['SLA_%'], color="#FF6B35")
 
 
-# VIEW 6: REFERENCE DOCUMENTATION & GLOSSARY
-elif app_view == "Reference Documentation":
-    st.title("Dashboard Reference Engine")
-    st.caption("System Architecture Controls, Dynamic Glossary, & Version Control Logs")
-    st.divider()
+# ══════════════════════════════════════════════════════════════════════════════
+# VIEW 6 — T-CAMP
+# ══════════════════════════════════════════════════════════════════════════════
+elif "T-Camp" in view:
+    st.markdown("## T-Camp Operations")
+    st.warning("🚧 Coming soon — accommodation matrix mapping pending pipeline config")
 
-    tab_doc, tab_glossary = st.tabs(["📋 Architectural Documentation (v1.0)", "📚 Interactive Operations Glossary"])
-    with tab_doc:
+
+# ══════════════════════════════════════════════════════════════════════════════
+# VIEW 7 — DOCS
+# ══════════════════════════════════════════════════════════════════════════════
+elif "Docs" in view:
+    st.markdown("## Reference documentation")
+    t1, t2 = st.tabs(["Architecture v1.0", "Glossary"])
+    with t1:
         st.markdown("""
-        ### System Architecture Specification — Version 1.0
-        * **Python Engine:** Ingests libraries and cleans up raw matrices natively.
-        * **Streamlit Framework:** Provides an enterprise interface capable of full-screen PWA pinning on field mobile devices.
-        * **Google Apps Script Engine:** Processes target daily records to trigger 6:00 PM partner escalation alerts.
+- **Python / pandas / numpy** — data ingestion and transformation
+- **Streamlit ≥ 1.28** — UI framework, PWA-pinnable on mobile
+- **Google Apps Script** — daily 6 PM partner compliance email trigger
+- **Google Sheets** — live data source (replace mock data with `gspread` connector)
         """)
-    with tab_glossary:
+    with t2:
         st.markdown("""
-        * **Total Scheduled Tasks:** Raw count of assigned records.
-        * **Compliance Core Rate:** `(Attended Assets / Total Scheduled Tasks) * 100`.
-        * **High-Risk Asset Tracker:** Flags records with Cancellations > 3.5% or Safety Scores < 80%.
+| Term | Definition |
+|---|---|
+| Compliance rate | `(Attended / Total Scheduled) × 100` |
+| High-risk rider | Cancel rate > 3.5% **or** Speed score < 80 |
+| SLA rate | Same as compliance rate, scoped to a fleet partner |
         """)
 
 
-# --- 5. FOOTER CONTROL ---
+# ── FOOTER ────────────────────────────────────────────────────────────────────
 st.markdown("""
-    <div style="text-align: center; margin-top: 55px; padding: 15px; border-top: 1px solid #eeeeee;">
-        <p style="font-size: 11px; color: #94a3b8; font-family: sans-serif; margin: 0;">
-            Talabat Logistics Engine Framework • UAE Existing Rider Training Data Stream
-        </p>
-    </div>
+<div style="text-align:center;margin-top:60px;padding:16px;border-top:1px solid #f1f5f9;">
+  <p style="font-size:11px;color:#94a3b8;margin:0;">
+    talabat Logistics · UAE Existing Rider Training · v2.0
+  </p>
+</div>
 """, unsafe_allow_html=True)
